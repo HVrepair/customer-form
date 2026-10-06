@@ -283,7 +283,7 @@
     <div class="qrbox" id="kioskQr" hidden>
       <div class="qrtitle">LINEで保証期間のご案内を受け取る</div>
       <div class="qr" id="qrImg"></div>
-      <p class="hint">お手持ちのスマホのカメラで読み取り、LINEで開いてください。<br>保証期間満了の際に、LINEでご案内をお送りします。</p>
+      <p class="hint">お手持ちのスマホのカメラで読み取るとLINEが開きます。<br>表示されたメッセージを<b>そのまま［送信］</b>してください。<br>保証期間満了の際に、LINEでご案内をお送りします。</p>
     </div>
 
     <!-- スマホ：LINE連携の結果 -->
@@ -291,6 +291,7 @@
       <p id="phoneLineMsg"></p>
       <a class="btn line-btn" id="friendBtn" href="#" target="_blank" rel="noopener" hidden>LINEで友だち追加する</a>
       <a class="btn line-btn" id="relinkBtn" href="#" hidden>もう一度LINEと連携する</a>
+      <a class="btn line-btn" id="sendCodeBtn" href="#" hidden>LINEで保証のご案内を受け取る</a>
     </div>
 
     <div class="count" id="doneCount"></div>
@@ -351,11 +352,13 @@
 // =====================================================================
 var SETTINGS = {
   // Apps ScriptのウェブアプリURL（https://script.google.com/macros/s/……/exec）
-  API_URL: '',
-  // LINE DevelopersのLIFF ID（例：2001234567-AbCdEfGh）
+  API_URL: 'https://script.google.com/macros/s/AKfycbxWdKFKCVx-yGN0EtmZsXArr-4xQwkagJAmybeB9Q34a_Xb8mKuxEl9kKw2aWM9mZKI/exec',
+  // LINE公式アカウントのベーシックID（@から始まるID。例：'@123abcde'）
+  LINE_BASIC_ID: '@784jpare',
+  // LIFF ID（LIFFを使う場合のみ。通常は空欄のまま）
   LIFF_ID: '',
   // LINE公式アカウントの友だち追加URL（例：https://lin.ee/xxxxxxx）
-  LINE_FRIEND_URL: '',
+  LINE_FRIEND_URL: 'https://line.me/R/ti/p/@784jpare',
   // 手書き署名： 'required'（必須） / 'optional'（任意） / 'off'（出さない）
   SIGNATURE: 'required',
   // 店頭iPad：送信完了後、次のお客様用に戻るまでの秒数（QRを読み取る時間を含む）
@@ -397,7 +400,7 @@ var SETTINGS = {
   function fakeApi(action, payload) {
     return new Promise(function (res) {
       setTimeout(function () {
-        if (action === 'submit') res({ ok: true, receiptNo: (STORE === 'fukuoka' ? 'F' : 'K') + '261006-01', linkToken: '0123456789abcdef0123456789abcdef', lineLinked: !KIOSK });
+        if (action === 'submit') res({ ok: true, receiptNo: (STORE === 'fukuoka' ? 'F' : 'K') + '261006-01', linkToken: '0123456789abcdef0123456789abcdef', lineLinked: false });
         else if (action === 'link') res({ ok: true, name: '山田 太郎', receiptNo: 'K261006-01' });
         else if (action === 'zip') {
           fetch('https://zipcloud.ibsnet.co.jp/api/search?zipcode=' + payload.zip).then(function (r) { return r.json(); })
@@ -414,6 +417,16 @@ var SETTINGS = {
     });
   }
   function liffUrl(query) { return 'https://liff.line.me/' + S.LIFF_ID + (query ? '?' + query : ''); }
+  // LINEを開いて「連携コード」入りのメッセージを送ってもらうURL
+  function lineLinkUrl(res) {
+    if (!res || !res.linkToken || !res.receiptNo) return '';
+    if (S.LINE_BASIC_ID || PREVIEW) {
+      var text = '保証案内の登録\n連携コード：' + res.receiptNo + '-' + String(res.linkToken).slice(0, 8);
+      return 'https://line.me/R/oaMessage/' + encodeURIComponent(S.LINE_BASIC_ID || '@preview') + '/?' + encodeURIComponent(text);
+    }
+    if (S.LIFF_ID) return liffUrl('link=' + res.linkToken);
+    return '';
+  }
 
   // ---------- 画面切り替え ----------
   var VIEWS = ['viewLoading', 'viewForm', 'viewConfirm', 'viewDone', 'viewLink', 'viewFatal'];
@@ -446,7 +459,7 @@ var SETTINGS = {
     STORE = S.STORES[p.get('store')] ? p.get('store') : 'kanda';
     $('storeName').textContent = S.STORES[STORE];
     if (p.get('link') && !KIOSK) return startLink(p.get('link'));
-    if (!KIOSK) $('lineNote').hidden = false;
+    if (useLiff) $('lineNote').hidden = false;
     show('viewForm');
     poke();
   }
@@ -684,14 +697,12 @@ var SETTINGS = {
     $('doneNo').textContent = res.receiptNo ? '受付番号　' + res.receiptNo : '';
     $('doneNo').hidden = !res.receiptNo;
     $('kioskQr').hidden = true; $('phoneLine').hidden = true;
-    $('friendBtn').hidden = true; $('relinkBtn').hidden = true;
+    $('friendBtn').hidden = true; $('relinkBtn').hidden = true; $('sendCodeBtn').hidden = true;
 
     if (KIOSK) {
       $('doneMsg').textContent = '入力が終わりましたら、iPadをスタッフにお渡しください。';
-      if (S.LIFF_ID || PREVIEW) {
-        drawQr($('qrImg'), liffUrl('link=' + res.linkToken));
-        $('kioskQr').hidden = false;
-      }
+      var kUrl = lineLinkUrl(res);
+      if (kUrl) { drawQr($('qrImg'), kUrl); $('kioskQr').hidden = false; }
       $('nextBtn').hidden = false; $('closeBtn').hidden = true;
       var left = S.KIOSK_RESET_SEC || 60;
       var tick = function () { $('doneCount').textContent = left + '秒後に最初の画面に戻ります'; };
@@ -704,10 +715,14 @@ var SETTINGS = {
       if (res.lineLinked) {
         $('phoneLineMsg').textContent = 'LINEと連携しました。保証期間満了の際に、LINEでご案内をお送りします。';
         showFriendButton($('friendBtn'));
-      } else if (useLiff || PREVIEW) {
+      } else if (useLiff) {
         $('phoneLineMsg').textContent = 'LINEとの連携ができませんでした。お手数ですが、下のボタンからもう一度お試しください。';
         $('relinkBtn').href = liffUrl('link=' + res.linkToken);
         $('relinkBtn').hidden = false;
+      } else if (lineLinkUrl(res)) {
+        $('phoneLineMsg').textContent = '保証期間満了の際に、LINEでご案内をお送りします。下のボタンでLINEを開き、表示されたメッセージをそのまま［送信］してください。';
+        $('sendCodeBtn').href = lineLinkUrl(res);
+        $('sendCodeBtn').hidden = false;
       } else {
         $('phoneLine').hidden = true;
       }
