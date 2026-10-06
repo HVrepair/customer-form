@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>お客様情報のご記入｜ハイブリッドバッテリーリペアセンター</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ink: #1b2a2f;
+    --sub: #5b6b70;
+    --line: #d5dfe1;
+    --bg: #f2f5f4;
+    --card: #ffffff;
+    --brand: #1f4e5f;
+    --accent: #0f7a5a;
+    --accent-tint: #e5f4ee;
+    --req: #c2410c;
+    --err: #b91c1c;
+    --err-tint: #fdecec;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", Meiryo, system-ui, sans-serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .kiosk body, body.kiosk { font-size: 19px; }
+  header.bar {
+    background: var(--brand); color: #fff; padding: 14px 16px;
+    padding-top: max(14px, env(safe-area-inset-top));
+  }
+  header.bar .in { max-width: 760px; margin: 0 auto; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  header.bar .shop { font-weight: 700; letter-spacing: .02em; }
+  header.bar .store { font-size: .85em; opacity: .85; }
+  main { max-width: 760px; margin: 0 auto; padding: 16px 16px 120px; }
+  h1 { font-size: 1.45em; margin: 8px 0 4px; }
+  .lead { color: var(--sub); margin: 0 0 16px; font-size: .95em; }
+  .card { background: var(--card); border-radius: var(--radius); padding: 18px 18px 6px; margin: 0 0 16px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  .card h2 { font-size: 1.1em; margin: 0 0 12px; padding-bottom: 8px; border-bottom: 2px solid var(--brand); color: var(--brand); }
+  .field { margin: 0 0 18px; }
+  .field > label, .field > .lbl { display: flex; align-items: center; gap: 8px; font-weight: 700; margin-bottom: 6px; }
+  .badge { font-size: .7em; font-weight: 700; padding: 1px 8px; border-radius: 999px; line-height: 1.6; }
+  .badge.req { background: var(--req); color: #fff; }
+  .badge.opt { background: #e3e8ea; color: var(--sub); }
+  .hint { font-size: .82em; color: var(--sub); margin-top: 4px; }
+  input[type=text], input[type=tel], input[type=email], select {
+    width: 100%; font-size: 1em; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 10px;
+    background: #fff; color: var(--ink); font-family: inherit; -webkit-appearance: none; appearance: none;
+  }
+  select { background-image: linear-gradient(45deg, transparent 50%, var(--sub) 50%), linear-gradient(135deg, var(--sub) 50%, transparent 50%);
+    background-position: calc(100% - 18px) 55%, calc(100% - 12px) 55%; background-size: 6px 6px; background-repeat: no-repeat; padding-right: 32px; }
+  input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(15,122,90,.18); }
+  .row { display: flex; gap: 10px; }
+  .row > * { flex: 1; }
+  .zip-row { display: flex; gap: 10px; align-items: center; }
+  .zip-row input { max-width: 200px; }
+  .zip-row .status { font-size: .85em; color: var(--sub); }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+  .tile { position: relative; }
+  .tile input { position: absolute; opacity: 0; pointer-events: none; }
+  .tile span {
+    display: flex; align-items: center; justify-content: center; text-align: center; min-height: 56px; padding: 10px 12px;
+    border: 1.5px solid var(--line); border-radius: 12px; background: #fff; font-weight: 700; cursor: pointer; user-select: none;
+  }
+  .tile input:checked + span { border-color: var(--accent); background: var(--accent-tint); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .tile input:checked + span::before { content: "✓"; margin-right: 6px; }
+  .tile input:focus-visible + span { box-shadow: 0 0 0 3px rgba(15,122,90,.25); }
+  .era { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+  .era .tile span { min-height: 46px; font-weight: 600; }
+  .bday { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 8px; align-items: center; }
+  .bday .unit { display: flex; align-items: center; gap: 6px; }
+  .bday .unit input, .bday .unit select { flex: 1; min-width: 0; }
+  .consent { border: 1.5px solid var(--line); border-radius: 12px; margin: 0 0 14px; overflow: hidden; }
+  .consent .ct { font-weight: 700; padding: 12px 14px 4px; }
+  .consent .cb { padding: 0 14px 12px; font-size: .9em; color: #34464b; }
+  .consent label.chk {
+    display: flex; align-items: center; gap: 12px; padding: 14px; background: #f7faf9; border-top: 1px solid var(--line);
+    font-weight: 700; cursor: pointer; user-select: none;
+  }
+  .consent input[type=checkbox] { width: 28px; height: 28px; accent-color: var(--accent); flex: none; }
+  .consent.ok { border-color: var(--accent); }
+  .consent.ok label.chk { background: var(--accent-tint); color: var(--accent); }
+  .sigwrap { position: relative; border: 1.5px dashed #9fb3b8; border-radius: 12px; background: #fff; touch-action: none; }
+  .sigwrap canvas { display: block; width: 100%; height: 190px; border-radius: 12px; }
+  .sigwrap .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #a3b3b7; pointer-events: none; font-size: .95em; }
+  .sigwrap.has .ph { display: none; }
+  .sigtools { display: flex; justify-content: flex-end; margin-top: 6px; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit; font-size: 1em; font-weight: 700;
+    border-radius: 12px; border: 0; padding: 14px 22px; cursor: pointer; min-height: 54px;
+  }
+  .btn.primary { background: var(--accent); color: #fff; }
+  .btn.primary:disabled { opacity: .55; }
+  .btn.ghost { background: #fff; color: var(--brand); border: 1.5px solid var(--brand); }
+  .btn.small { min-height: 40px; padding: 6px 14px; font-size: .85em; }
+  .actionbar {
+    position: fixed; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,.96); border-top: 1px solid var(--line);
+    padding: 12px 16px; padding-bottom: max(12px, env(safe-area-inset-bottom)); z-index: 5;
+  }
+  .actionbar .in { max-width: 760px; margin: 0 auto; display: flex; gap: 10px; }
+  .actionbar .btn { flex: 1; }
+  .field.has-err input, .field.has-err select, .field.has-err .tile span, .consent.has-err, .field.has-err .sigwrap { border-color: var(--err); }
+  .errmsg { display: none; color: var(--err); font-size: .85em; font-weight: 700; margin-top: 4px; }
+  .has-err > .errmsg, .consent.has-err .errmsg { display: block; }
+  .consent .errmsg { padding: 0 14px 10px; }
+  .summary-err { display: none; background: var(--err-tint); color: var(--err); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; font-weight: 700; }
+  .summary-err.show { display: block; }
+  dl.confirm { margin: 0; }
+  dl.confirm div { display: grid; grid-template-columns: minmax(6em, 9em) minmax(0, 1fr); gap: 10px; padding: 10px 0; border-bottom: 1px solid #edf1f2; }
+  dl.confirm dt { color: var(--sub); font-size: .9em; }
+  dl.confirm dd { margin: 0; font-weight: 600; word-break: break-all; }
+  dl.confirm img { width: 100%; max-width: 260px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+  .done { text-align: center; padding: 48px 8px; }
+  .done .mark { width: 84px; height: 84px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 46px; line-height: 84px; margin: 0 auto 18px; }
+  .done h1 { margin-bottom: 8px; }
+  .done .no { display: inline-block; margin: 14px 0; padding: 8px 18px; background: #fff; border-radius: 10px; font-weight: 700; letter-spacing: .05em; }
+  .done .line-btn { display: inline-flex; margin-top: 18px; background: #06c755; color: #fff; text-decoration: none; }
+  .done .count { color: var(--sub); margin-top: 20px; font-size: .9em; }
+  .overlay { position: fixed; inset: 0; background: rgba(20,35,40,.55); display: none; align-items: center; justify-content: center; z-index: 20; padding: 16px; }
+  .overlay.show { display: flex; }
+  .overlay .box { background: #fff; border-radius: 16px; padding: 26px 22px; text-align: center; max-width: 420px; width: 100%; }
+  .spinner { width: 44px; height: 44px; border: 4px solid #d8e6e2; border-top-color: var(--accent); border-radius: 50%; margin: 0 auto 14px; animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .preview-note { background: #fff7e0; color: #7a5a00; font-size: .8em; text-align: center; padding: 6px; }
+  [hidden] { display: none !important; }
+  @media (min-width: 768px) {
+    main { padding-top: 24px; }
+    .card { padding: 22px 26px 8px; }
+  }
+  .qrbox { margin: 22px auto 0; max-width: 360px; background: #fff; border-radius: 16px; padding: 18px 18px 8px; border: 2px solid #06c755; }
+  .qrbox .qrtitle { font-weight: 700; color: #058a3c; margin-bottom: 8px; }
+  .qrbox .qr { width: 220px; height: 220px; margin: 0 auto; }
+  .qrbox .qr svg { width: 100%; height: 100%; display: block; }
+  .linebox { margin-top: 14px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .linebox p { margin: 0; }
+  .done .mark.ng { background: var(--err); }
+  .done .spinner { margin-top: 40px; }
+  .line-note { display: flex; gap: 10px; align-items: flex-start; background: #e9f9ef; color: #165c33; border-radius: 10px; padding: 10px 14px; margin: 0 0 16px; font-size: .88em; }
+  .line-note b { color: #06a046; }
+</style>
+</head>
+<body>
+
+<div class="preview-note" id="previewNote" hidden>プレビュー表示です（送信してもデータは保存されません）</div>
+<header class="bar"><div class="in">
+  <div class="shop">ハイブリッドバッテリーリペアセンター</div>
+  <div class="store" id="storeName"></div>
+</div></header>
+
+
+<!-- ========== 入力画面 ========== -->
+<main id="viewForm" hidden>
+  <h1>お客様情報のご記入</h1>
+  <p class="lead">修理のご連絡・保証書兼領収書の作成に使用します。所要時間は約2分です。</p>
+  <div class="line-note" id="lineNote" hidden><b>LINE</b><span>送信すると、このLINEアカウントと受付情報が連携され、保証期間満了の際にLINEでご案内をお送りします。</span></div>
+  <div class="summary-err" id="summaryErr"></div>
+
+  <section class="card">
+    <h2>お客様情報</h2>
+    <div class="field" data-f="name">
+      <label for="name">お名前 <span class="badge req">必須</span></label>
+      <input type="text" id="name" autocomplete="name" placeholder="例）山田 太郎">
+      <div class="hint">保証書兼領収書の宛名になります</div>
+      <div class="errmsg">お名前を入力してください</div>
+    </div>
+    <div class="field" data-f="kana">
+      <label for="kana">フリガナ <span class="badge req">必須</span></label>
+      <input type="text" id="kana" placeholder="例）ヤマダ タロウ">
+      <div class="errmsg">フリガナをカタカナで入力してください</div>
+    </div>
+    <div class="field" data-f="gender">
+      <div class="lbl">性別 <span class="badge opt">任意</span></div>
+      <div class="tiles">
+        <label class="tile"><input type="radio" name="gender" value="男"><span>男性</span></label>
+        <label class="tile"><input type="radio" name="gender" value="女"><span>女性</span></label>
+      </div>
+    </div>
+    <div class="field" data-f="birthday">
+      <div class="lbl">生年月日 <span class="badge opt">任意</span></div>
+      <div class="era">
+        <label class="tile"><input type="radio" name="era" value="showa" checked><span>昭和</span></label>
+        <label class="tile"><input type="radio" name="era" value="heisei"><span>平成</span></label>
+        <label class="tile"><input type="radio" name="era" value="seireki"><span>西暦</span></label>
+      </div>
+      <div class="bday">
+        <div class="unit"><input type="tel" id="bY" inputmode="numeric" maxlength="4" placeholder="58"><span>年</span></div>
+        <div class="unit"><select id="bM"><option value="">-</option></select><span>月</span></div>
+        <div class="unit"><select id="bD"><option value="">-</option></select><span>日</span></div>
+      </div>
+      <div class="hint" id="bHint">&nbsp;</div>
+      <div class="errmsg">生年月日をご確認ください</div>
+    </div>
+    <div class="field" data-f="phone">
+      <label for="phone">電話番号 <span class="badge req">必須</span></label>
+      <input type="tel" id="phone" autocomplete="tel" inputmode="tel" placeholder="例）090-1234-5678">
+      <div class="errmsg">電話番号をご確認ください（ハイフンなしでもOK）</div>
+    </div>
+    <div class="field" data-f="zip">
+      <label for="zip">郵便番号 <span class="badge req">必須</span></label>
+      <div class="zip-row">
+        <input type="tel" id="zip" autocomplete="postal-code" inputmode="numeric" maxlength="8" placeholder="例）8240018">
+        <span class="status" id="zipStatus">入力すると住所が自動で入ります</span>
+      </div>
+      <div class="errmsg">郵便番号を7桁で入力してください</div>
+    </div>
+    <div class="field" data-f="address">
+      <label for="address">住所 <span class="badge req">必須</span></label>
+      <input type="text" id="address" autocomplete="street-address" placeholder="例）福岡県行橋市大字今井3619">
+      <div class="hint">番地・建物名・部屋番号までご入力ください</div>
+      <div class="errmsg">住所を入力してください</div>
+    </div>
+    <div class="field" data-f="email">
+      <label for="email">メールアドレス <span class="badge opt">任意</span></label>
+      <input type="email" id="email" autocomplete="email" inputmode="email" autocapitalize="off" placeholder="例）example@mail.com">
+      <div class="hint">書類の送付に使用します</div>
+      <div class="errmsg">メールアドレスの形式をご確認ください</div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>お支払・書類</h2>
+    <div class="field" data-f="payment">
+      <div class="lbl">お支払方法 <span class="badge req">必須</span></div>
+      <div class="tiles">
+        <label class="tile"><input type="radio" name="payment" value="現金"><span>現金</span></label>
+        <label class="tile"><input type="radio" name="payment" value="クレジットカード（一括のみ）"><span>クレジットカード<br>（一括のみ）</span></label>
+      </div>
+      <div class="errmsg">お支払方法を選んでください</div>
+    </div>
+    <div class="field" data-f="receipt">
+      <div class="lbl">保証書兼領収書 <span class="badge req">必須</span></div>
+      <div class="tiles">
+        <label class="tile"><input type="radio" name="receipt" value="要"><span>要</span></label>
+        <label class="tile"><input type="radio" name="receipt" value="不要"><span>不要</span></label>
+      </div>
+      <div class="errmsg">要・不要を選んでください</div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>ご承諾事項</h2>
+    <p class="hint" style="margin-top:-4px">内容をお読みいただき、すべてにチェックをお願いします。</p>
+    <div id="consents"></div>
+  </section>
+
+  <section class="card" id="sigCard">
+    <h2>ご署名 <span class="badge" id="sigBadge"></span></h2>
+    <div class="field" data-f="signature">
+      <div class="sigwrap" id="sigWrap">
+        <canvas id="sig"></canvas>
+        <div class="ph">ここに指でご署名ください</div>
+      </div>
+      <div class="sigtools"><button type="button" class="btn ghost small" id="sigClear">書き直す</button></div>
+      <div class="errmsg">ご署名をお願いします</div>
+    </div>
+  </section>
+</main>
+
+<!-- ========== 確認画面 ========== -->
+<main id="viewConfirm" hidden>
+  <h1>入力内容のご確認</h1>
+  <p class="lead">以下の内容でよろしければ「送信する」を押してください。</p>
+  <section class="card"><dl class="confirm" id="confirmList"></dl></section>
+</main>
+
+<!-- ========== 読み込み中 ========== -->
+<main id="viewLoading" hidden>
+  <div class="done"><div class="spinner"></div><p id="loadingText">読み込んでいます…</p></div>
+</main>
+
+<!-- ========== 完了画面 ========== -->
+<main id="viewDone" hidden>
+  <div class="done">
+    <div class="mark">✓</div>
+    <h1>ご記入ありがとうございました</h1>
+    <p id="doneMsg"></p>
+    <div class="no" id="doneNo"></div>
+
+    <!-- 店頭iPad：LINE連携用QR -->
+    <div class="qrbox" id="kioskQr" hidden>
+      <div class="qrtitle">LINEで保証期間のご案内を受け取る</div>
+      <div class="qr" id="qrImg"></div>
+      <p class="hint">お手持ちのスマホのカメラで読み取り、LINEで開いてください。<br>保証期間満了の際に、LINEでご案内をお送りします。</p>
+    </div>
+
+    <!-- スマホ：LINE連携の結果 -->
+    <div class="linebox" id="phoneLine" hidden>
+      <p id="phoneLineMsg"></p>
+      <a class="btn line-btn" id="friendBtn" href="#" target="_blank" rel="noopener" hidden>LINEで友だち追加する</a>
+      <a class="btn line-btn" id="relinkBtn" href="#" hidden>もう一度LINEと連携する</a>
+    </div>
+
+    <div class="count" id="doneCount"></div>
+    <div style="margin-top:18px">
+      <button type="button" class="btn ghost" id="nextBtn" hidden>次のお客様の入力へ</button>
+      <button type="button" class="btn ghost" id="closeBtn" hidden>閉じる</button>
+    </div>
+  </div>
+</main>
+
+<!-- ========== LINE連携（iPad受付後のQRから） ========== -->
+<main id="viewLink" hidden>
+  <div class="done">
+    <div class="mark" id="linkMark">✓</div>
+    <h1 id="linkTitle"></h1>
+    <p id="linkMsg"></p>
+    <div class="linebox">
+      <a class="btn line-btn" id="linkFriendBtn" href="#" target="_blank" rel="noopener" hidden>LINEで友だち追加する</a>
+    </div>
+    <div style="margin-top:18px"><button type="button" class="btn ghost" id="linkCloseBtn" hidden>閉じる</button></div>
+  </div>
+</main>
+
+<!-- ========== 起動エラー ========== -->
+<main id="viewFatal" hidden>
+  <div class="done">
+    <div class="mark ng">!</div>
+    <h1>ページを開けませんでした</h1>
+    <p id="fatalMsg"></p>
+  </div>
+</main>
+
+<div class="actionbar" id="barForm" hidden><div class="in">
+  <button type="button" class="btn primary" id="toConfirm">入力内容を確認する</button>
+</div></div>
+<div class="actionbar" id="barConfirm" hidden><div class="in">
+  <button type="button" class="btn ghost" id="backBtn">修正する</button>
+  <button type="button" class="btn primary" id="sendBtn">送信する</button>
+</div></div>
+
+<div class="overlay" id="ovSending"><div class="box"><div class="spinner"></div>送信しています…</div></div>
+<div class="overlay" id="ovIdle"><div class="box">
+  <p style="margin-top:0;font-weight:700">入力を続けますか？</p>
+  <p class="hint">操作がない場合、<span id="idleSec">20</span>秒後に入力内容を消去します。</p>
+  <button type="button" class="btn primary" id="idleKeep" style="width:100%">入力を続ける</button>
+</div></div>
+<div class="overlay" id="ovError"><div class="box">
+  <p style="margin-top:0;font-weight:700;color:var(--err)">送信できませんでした</p>
+  <p id="errText" class="hint"></p>
+  <button type="button" class="btn primary" id="errClose" style="width:100%">戻る</button>
+</div></div>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+// =====================================================================
+// 設定（セットアップ時にここだけ書き換えます）
+// =====================================================================
+var SETTINGS = {
+  // Apps ScriptのウェブアプリURL（https://script.google.com/macros/s/……/exec）
+  API_URL: '',
+  // LINE DevelopersのLIFF ID（例：2001234567-AbCdEfGh）
+  LIFF_ID: '',
+  // LINE公式アカウントの友だち追加URL（例：https://lin.ee/xxxxxxx）
+  LINE_FRIEND_URL: '',
+  // 手書き署名： 'required'（必須） / 'optional'（任意） / 'off'（出さない）
+  SIGNATURE: 'required',
+  // 店頭iPad：送信完了後、次のお客様用に戻るまでの秒数（QRを読み取る時間を含む）
+  KIOSK_RESET_SEC: 60,
+  STORES: { kanda: '苅田行橋店', fukuoka: '福岡インター店' },
+  // 承諾文言（変更時はCode.gsのCONSENTSも同じ内容に変更してください）
+  CONSENTS: [
+    { key: 'agree1', label: '承諾します', title: '【１】電子機器の設定・カーナビのパスコードに関して', body: 'バッテリーの取外しを行うため、作業中の給電は出来かねます。そのため、ライト類・カーナビ・その他電子機器をお取付の場合、初期化・不具合・破損の可能性があります。カーナビでパスコードをご設定されている場合、交換修理後に、パスコードの入力が求められることがあります。当店での再設定や修理は出来かねますので、あらかじめご了承ください。お忘れの場合はディーラー等にて再設定いただけますようお願いいたします。' },
+    { key: 'agree2', label: '承諾します', title: '【２】修理保証に関して', body: '保証期間内にハイブリッドシステムチェックが点灯し、電池の故障であることが確認できた場合、今回の修理と同様の作業を無償でさせていただきます。昇圧インバーターやその他に関しては保証対応できかねます。また、返品・返金対応はできかねます。（※保証期間はお支払い完了日から開始します）' },
+    { key: 'agree3', label: '承諾します', title: '【３】取り外したバッテリーに関して', body: '当店では交換したバッテリーを再利用させていただきます。取り外したものをお持ち帰りいただく事は出来かねますので、ご注意ください。' },
+    { key: 'agree4', label: '同意します', title: '【４】個人情報の利用目的・LINEでのご案内について', body: 'ご登録いただいた情報は、修理のご連絡、保証書兼領収書の送付、保証期間満了時のご案内・アンケートのお送りに利用します。LINEでのご案内の受け取りに同意します。' }
+  ]
+};
+</script>
+<script>
+(function () {
+  'use strict';
+  var S = SETTINGS;
+  var PREVIEW = !S.API_URL;           // API未設定＝画面確認用のプレビュー
+  var LIFF_SDK = 'https://static.line-scdn.net/liff/edge/2/sdk.js';
+  var $ = function (id) { return document.getElementById(id); };
+  var params = new URLSearchParams(location.search);
+  var KIOSK = params.get('mode') === 'ipad';
+  var MODE = KIOSK ? 'kiosk' : 'phone';
+  var STORE = 'kanda';
+  var useLiff = false;                // LINEアプリ内（LIFF）で動いているか
+
+  if (PREVIEW) $('previewNote').hidden = false;
+  if (KIOSK) document.body.classList.add('kiosk');
+
+  // ---------- 通信 ----------
+  function api(action, payload) {
+    if (PREVIEW) return fakeApi(action, payload);
+    var body = JSON.stringify(Object.assign({ action: action }, payload || {}));
+    return fetch(S.API_URL, { method: 'POST', body: body, redirect: 'follow' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { if (!j.ok) throw new Error(j.error || '送信できませんでした'); return j; });
+  }
+  function fakeApi(action, payload) {
+    return new Promise(function (res) {
+      setTimeout(function () {
+        if (action === 'submit') res({ ok: true, receiptNo: (STORE === 'fukuoka' ? 'F' : 'K') + '261006-01', linkToken: '0123456789abcdef0123456789abcdef', lineLinked: !KIOSK });
+        else if (action === 'link') res({ ok: true, name: '山田 太郎', receiptNo: 'K261006-01' });
+        else if (action === 'zip') {
+          fetch('https://zipcloud.ibsnet.co.jp/api/search?zipcode=' + payload.zip).then(function (r) { return r.json(); })
+            .then(function (j) { var x = j.results && j.results[0]; res({ ok: true, address: x ? x.address1 + x.address2 + x.address3 : '' }); })
+            .catch(function () { res({ ok: true, address: '' }); });
+        } else res({ ok: true });
+      }, 500);
+    });
+  }
+  function loadScript(src) {
+    return new Promise(function (ok, ng) {
+      var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { ng(new Error('読み込み失敗')); };
+      document.head.appendChild(s);
+    });
+  }
+  function liffUrl(query) { return 'https://liff.line.me/' + S.LIFF_ID + (query ? '?' + query : ''); }
+
+  // ---------- 画面切り替え ----------
+  var VIEWS = ['viewLoading', 'viewForm', 'viewConfirm', 'viewDone', 'viewLink', 'viewFatal'];
+  function show(view) {
+    VIEWS.forEach(function (v) { $(v).hidden = v !== view; });
+    $('barForm').hidden = view !== 'viewForm';
+    $('barConfirm').hidden = view !== 'viewConfirm';
+    window.scrollTo(0, 0);
+    if (view === 'viewForm') setTimeout(sizeCanvas, 0);
+  }
+  function fatal(msg) { $('fatalMsg').textContent = msg; show('viewFatal'); }
+
+  // ---------- 起動 ----------
+  function boot() {
+    if (KIOSK || PREVIEW || !S.LIFF_ID) return route(params);
+    // スマホ（QR）はLINEアプリ内で開く
+    $('loadingText').textContent = 'LINEと接続しています…';
+    show('viewLoading');
+    loadScript(LIFF_SDK)
+      .then(function () { return liff.init({ liffId: S.LIFF_ID }); })
+      .then(function () {
+        if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
+        useLiff = true;
+        route(new URLSearchParams(location.search));
+      })
+      .catch(function () { fatal('LINEとの接続に失敗しました。LINEアプリでQRコードを読み取り直すか、スタッフにお声がけください。'); });
+  }
+
+  function route(p) {
+    STORE = S.STORES[p.get('store')] ? p.get('store') : 'kanda';
+    $('storeName').textContent = S.STORES[STORE];
+    if (p.get('link') && !KIOSK) return startLink(p.get('link'));
+    if (!KIOSK) $('lineNote').hidden = false;
+    show('viewForm');
+    poke();
+  }
+
+  // 店頭iPadでは前のお客様の入力候補が出ないようにする
+  if (KIOSK) {
+    document.querySelectorAll('input').forEach(function (el) {
+      el.setAttribute('autocomplete', 'off'); el.setAttribute('autocorrect', 'off');
+    });
+  }
+
+  // ---------- 承諾事項 ----------
+  S.CONSENTS.forEach(function (c) {
+    var d = document.createElement('div');
+    d.className = 'consent'; d.dataset.f = c.key;
+    d.innerHTML = '<div class="ct"></div><div class="cb"></div>' +
+      '<label class="chk"><input type="checkbox"><span></span></label><div class="errmsg">チェックをお願いします</div>';
+    d.querySelector('.ct').textContent = c.title;
+    d.querySelector('.cb').textContent = c.body;
+    d.querySelector('.chk span').textContent = '内容を確認し、' + c.label;
+    var cb = d.querySelector('input');
+    cb.id = c.key;
+    cb.addEventListener('change', function () { d.classList.toggle('ok', cb.checked); if (cb.checked) d.classList.remove('has-err'); });
+    $('consents').appendChild(d);
+  });
+
+  // ---------- 署名 ----------
+  var SIG_MODE = S.SIGNATURE;
+  var sigHas = false;
+  if (SIG_MODE === 'off') { $('sigCard').hidden = true; }
+  else {
+    $('sigBadge').className = 'badge ' + (SIG_MODE === 'required' ? 'req' : 'opt');
+    $('sigBadge').textContent = SIG_MODE === 'required' ? '必須' : '任意';
+  }
+  var canvas = $('sig'), ctx = canvas.getContext('2d'), drawing = false, lastPt = null;
+  function sizeCanvas() {
+    var r = canvas.getBoundingClientRect(); if (!r.width) return;
+    var dpr = window.devicePixelRatio || 1;
+    if (canvas.width === Math.round(r.width * dpr) && canvas.height === Math.round(r.height * dpr)) return;
+    var keep = sigHas ? canvas.toDataURL() : null;
+    canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.lineWidth = 2.6; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#111';
+    if (keep) { var im = new Image(); im.onload = function () { ctx.drawImage(im, 0, 0, r.width, r.height); }; im.src = keep; }
+  }
+  function pt(e) { var r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  canvas.addEventListener('pointerdown', function (e) { e.preventDefault(); drawing = true; lastPt = pt(e); canvas.setPointerCapture(e.pointerId); poke(); });
+  canvas.addEventListener('pointermove', function (e) {
+    if (!drawing) return; e.preventDefault();
+    var p = pt(e); ctx.beginPath(); ctx.moveTo(lastPt.x, lastPt.y); ctx.lineTo(p.x, p.y); ctx.stroke(); lastPt = p;
+    if (!sigHas) { sigHas = true; $('sigWrap').classList.add('has'); fieldOk('signature'); }
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) { canvas.addEventListener(t, function () { drawing = false; }); });
+  function clearSig() { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.restore(); sigHas = false; $('sigWrap').classList.remove('has'); }
+  $('sigClear').addEventListener('click', clearSig);
+  window.addEventListener('resize', sizeCanvas);
+
+  // 署名を余白なしでPNG化（横幅最大600px）
+  function exportSig() {
+    var w = canvas.width, h = canvas.height, px = ctx.getImageData(0, 0, w, h).data;
+    var minX = w, minY = h, maxX = 0, maxY = 0;
+    for (var y = 0; y < h; y += 2) for (var x = 0; x < w; x += 2) {
+      if (px[(y * w + x) * 4 + 3] > 0) { if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+    }
+    if (maxX < minX) return '';
+    var pad = 12; minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad);
+    maxX = Math.min(w, maxX + pad); maxY = Math.min(h, maxY + pad);
+    var cw = maxX - minX, ch = maxY - minY, scale = Math.min(1, 600 / cw);
+    var out = document.createElement('canvas'); out.width = Math.round(cw * scale); out.height = Math.round(ch * scale);
+    var o = out.getContext('2d'); o.fillStyle = '#fff'; o.fillRect(0, 0, out.width, out.height);
+    o.drawImage(canvas, minX, minY, cw, ch, 0, 0, out.width, out.height);
+    return out.toDataURL('image/png');
+  }
+
+  // ---------- 生年月日 ----------
+  for (var m = 1; m <= 12; m++) $('bM').insertAdjacentHTML('beforeend', '<option value="' + m + '">' + m + '</option>');
+  for (var dd = 1; dd <= 31; dd++) $('bD').insertAdjacentHTML('beforeend', '<option value="' + dd + '">' + dd + '</option>');
+  function eraVal() { var r = document.querySelector('input[name=era]:checked'); return r ? r.value : 'showa'; }
+  function birthYear() {
+    var y = parseInt(toHalf($('bY').value), 10); if (!y) return null;
+    var e = eraVal();
+    if (e === 'showa') return (y >= 1 && y <= 64) ? 1925 + y : NaN;
+    if (e === 'heisei') return (y >= 1 && y <= 31) ? 1988 + y : NaN;
+    return (y >= 1900 && y <= new Date().getFullYear()) ? y : NaN;
+  }
+  function birthday() {
+    var y = birthYear(), mo = $('bM').value, d = $('bD').value;
+    if (y === null && !mo && !d) return { v: '' };
+    if (!y || !mo || !d) return { err: true };
+    var dt = new Date(y, mo - 1, d);
+    if (dt.getMonth() !== mo - 1 || dt > new Date()) return { err: true };
+    return { v: y + '/' + ('0' + mo).slice(-2) + '/' + ('0' + d).slice(-2) };
+  }
+  function bHint() {
+    var y = birthYear();
+    $('bHint').innerHTML = y ? '西暦 ' + y + '年' : (y !== null && isNaN(y) ? '年をご確認ください' : '&nbsp;');
+    $('bY').placeholder = eraVal() === 'seireki' ? '1983' : (eraVal() === 'showa' ? '58' : '5');
+  }
+  document.querySelectorAll('input[name=era]').forEach(function (r) { r.addEventListener('change', bHint); });
+  $('bY').addEventListener('input', bHint);
+
+  // ---------- 入力補助 ----------
+  function toHalf(v) { return String(v || '').replace(/[！-～]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).replace(/[‐－―ー−]/g, '-'); }
+  function toKata(v) { return String(v || '').replace(/[ぁ-ゖ]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) + 0x60); }); }
+  $('kana').addEventListener('blur', function () { this.value = toKata(this.value).replace(/[\s　]+/g, ' ').trim(); });
+  $('phone').addEventListener('blur', function () { this.value = toHalf(this.value).replace(/[^\d-]/g, ''); });
+  $('email').addEventListener('blur', function () { this.value = toHalf(this.value).trim(); });
+
+  var lastAuto = '', zipSeq = 0;
+  $('zip').addEventListener('input', function () {
+    var z = toHalf(this.value).replace(/\D/g, '');
+    if (z.length !== 7) { $('zipStatus').textContent = '入力すると住所が自動で入ります'; return; }
+    $('zipStatus').textContent = '住所を検索中…';
+    var seq = ++zipSeq;
+    api('zip', { zip: z }).then(function (j) { return j.address; }).catch(function () { return ''; }).then(function (addr) {
+      if (seq !== zipSeq) return;
+      if (!addr) { $('zipStatus').textContent = '住所が見つかりませんでした。直接ご入力ください'; return; }
+      var a = $('address');
+      if (!a.value || a.value === lastAuto) { a.value = addr; lastAuto = addr; }
+      $('zipStatus').textContent = '住所を入力しました。続きの番地をご入力ください';
+      fieldOk('zip'); fieldOk('address');
+      a.focus(); try { a.setSelectionRange(a.value.length, a.value.length); } catch (e) {}
+    });
+  });
+
+  // ---------- 入力チェック ----------
+  function radio(name) { var r = document.querySelector('input[name=' + name + ']:checked'); return r ? r.value : ''; }
+  function fieldEl(f) { return document.querySelector('[data-f="' + f + '"]'); }
+  function fieldOk(f) { var el = fieldEl(f); if (el) el.classList.remove('has-err'); }
+  document.querySelectorAll('input, select').forEach(function (el) {
+    ['input', 'change'].forEach(function (t) {
+      el.addEventListener(t, function () { var f = el.closest('[data-f]'); if (f) f.classList.remove('has-err'); });
+    });
+  });
+
+  function collect() {
+    var d = {
+      store: STORE, mode: MODE,
+      name: $('name').value.trim().replace(/[\s　]+/g, ' '),
+      kana: toKata($('kana').value).replace(/[\s　]+/g, ' ').trim(),
+      gender: radio('gender'),
+      phone: toHalf($('phone').value).replace(/[^\d]/g, ''),
+      zip: toHalf($('zip').value).replace(/\D/g, ''),
+      address: $('address').value.trim(),
+      email: toHalf($('email').value).trim(),
+      payment: radio('payment'),
+      receipt: radio('receipt')
+    };
+    var errs = [];
+    if (!d.name) errs.push('name');
+    if (!d.kana || !/^[ァ-ヶー・ ]+$/.test(d.kana)) errs.push('kana');
+    var b = birthday(); if (b.err) errs.push('birthday'); else d.birthday = b.v;
+    if (!/^0\d{9,10}$/.test(d.phone)) errs.push('phone');
+    if (d.zip.length !== 7) errs.push('zip');
+    if (!d.address) errs.push('address');
+    if (d.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)) errs.push('email');
+    if (!d.payment) errs.push('payment');
+    if (!d.receipt) errs.push('receipt');
+    S.CONSENTS.forEach(function (c) { d[c.key] = $(c.key).checked; if (!d[c.key]) errs.push(c.key); });
+    if (SIG_MODE !== 'off' && sigHas) d.signature = exportSig();
+    if (SIG_MODE === 'required' && !d.signature) errs.push('signature');
+    return { data: d, errs: errs };
+  }
+
+  // ---------- 確認 → 送信 ----------
+  var current = null;
+  var LABELS = { name: 'お名前', kana: 'フリガナ', birthday: '生年月日', phone: '電話番号', zip: '郵便番号', address: '住所',
+    email: 'メールアドレス', payment: 'お支払方法', receipt: '保証書兼領収書', signature: 'ご署名' };
+
+  $('toConfirm').addEventListener('click', function () {
+    document.querySelectorAll('.has-err').forEach(function (el) { el.classList.remove('has-err'); });
+    var r = collect();
+    if (r.errs.length) {
+      r.errs.forEach(function (f) { var el = fieldEl(f); if (el) el.classList.add('has-err'); });
+      var names = r.errs.map(function (f) { return LABELS[f] || 'ご承諾事項'; }).filter(function (v, i, a) { return a.indexOf(v) === i; });
+      $('summaryErr').textContent = '未入力・確認が必要な項目があります：' + names.join('、');
+      $('summaryErr').classList.add('show');
+      var first = fieldEl(r.errs[0]);
+      if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    $('summaryErr').classList.remove('show');
+    current = r.data;
+    renderConfirm(current);
+    show('viewConfirm');
+  });
+
+  function renderConfirm(d) {
+    var rows = [
+      ['お名前', d.name + ' 様'], ['フリガナ', d.kana], ['性別', d.gender ? d.gender + '性' : '（未回答）'],
+      ['生年月日', d.birthday || '（未回答）'], ['電話番号', d.phone.replace(/^(0[789]0)(\d{4})(\d{4})$/, '$1-$2-$3')],
+      ['郵便番号', d.zip.slice(0, 3) + '-' + d.zip.slice(3)], ['住所', d.address],
+      ['メールアドレス', d.email || '（未回答）'], ['お支払方法', d.payment], ['保証書兼領収書', d.receipt],
+      ['ご承諾事項', 'すべて確認済み']
+    ];
+    var dl = $('confirmList'); dl.innerHTML = '';
+    rows.forEach(function (r) { dl.appendChild(confirmRow(r[0], r[1])); });
+    if (SIG_MODE !== 'off') {
+      var row = confirmRow('ご署名', d.signature ? '' : '（なし）');
+      if (d.signature) { var im = new Image(); im.src = d.signature; row.querySelector('dd').appendChild(im); }
+      dl.appendChild(row);
+    }
+  }
+  function confirmRow(k, v) {
+    var div = document.createElement('div'), dt = document.createElement('dt'), dd = document.createElement('dd');
+    dt.textContent = k; dd.textContent = v; div.appendChild(dt); div.appendChild(dd); return div;
+  }
+
+  $('backBtn').addEventListener('click', function () { show('viewForm'); });
+
+  $('sendBtn').addEventListener('click', function () {
+    if (!current) return;
+    $('sendBtn').disabled = true;
+    $('ovSending').classList.add('show');
+    var idToken = '';
+    if (useLiff) { try { idToken = liff.getIDToken() || ''; } catch (e) {} }
+    api('submit', { data: current, idToken: idToken })
+      .then(function (res) {
+        $('ovSending').classList.remove('show'); $('sendBtn').disabled = false;
+        done(res);
+        api('process').catch(function () {}); // Dropboxへの保存（失敗しても5分ごとに自動再送）
+      })
+      .catch(function (err) {
+        $('ovSending').classList.remove('show'); $('sendBtn').disabled = false;
+        $('errText').textContent = err && err.message && err.message !== 'Failed to fetch'
+          ? err.message.replace(/^(Exception|Error):\s*/, '') : '通信状態をご確認のうえ、もう一度お試しください。';
+        $('ovError').classList.add('show');
+      });
+  });
+  $('errClose').addEventListener('click', function () { $('ovError').classList.remove('show'); });
+
+  // ---------- 完了 ----------
+  var countdownTimer = null;
+  function done(res) {
+    $('doneNo').textContent = res.receiptNo ? '受付番号　' + res.receiptNo : '';
+    $('doneNo').hidden = !res.receiptNo;
+    $('kioskQr').hidden = true; $('phoneLine').hidden = true;
+    $('friendBtn').hidden = true; $('relinkBtn').hidden = true;
+
+    if (KIOSK) {
+      $('doneMsg').textContent = '入力が終わりましたら、iPadをスタッフにお渡しください。';
+      if (S.LIFF_ID || PREVIEW) {
+        drawQr($('qrImg'), liffUrl('link=' + res.linkToken));
+        $('kioskQr').hidden = false;
+      }
+      $('nextBtn').hidden = false; $('closeBtn').hidden = true;
+      var left = S.KIOSK_RESET_SEC || 60;
+      var tick = function () { $('doneCount').textContent = left + '秒後に最初の画面に戻ります'; };
+      tick();
+      countdownTimer = setInterval(function () { left--; tick(); if (left <= 0) resetAll(); }, 1000);
+    } else {
+      $('doneMsg').textContent = '受付が完了しました。スタッフにお声がけください。';
+      $('nextBtn').hidden = true; $('doneCount').textContent = '';
+      $('phoneLine').hidden = false;
+      if (res.lineLinked) {
+        $('phoneLineMsg').textContent = 'LINEと連携しました。保証期間満了の際に、LINEでご案内をお送りします。';
+        showFriendButton($('friendBtn'));
+      } else if (useLiff || PREVIEW) {
+        $('phoneLineMsg').textContent = 'LINEとの連携ができませんでした。お手数ですが、下のボタンからもう一度お試しください。';
+        $('relinkBtn').href = liffUrl('link=' + res.linkToken);
+        $('relinkBtn').hidden = false;
+      } else {
+        $('phoneLine').hidden = true;
+      }
+      $('closeBtn').hidden = !useLiff;
+    }
+    resetForm(); // 個人情報を画面に残さない
+    show('viewDone');
+  }
+  function drawQr(el, text) {
+    el.innerHTML = '';
+    if (typeof qrcode === 'undefined') { el.textContent = '（QRコードを表示できませんでした）'; return; }
+    var qr = qrcode(0, 'M'); qr.addData(text); qr.make();
+    el.innerHTML = qr.createSvgTag({ cellSize: 5, margin: 2, scalable: true });
+  }
+  // 友だちでなければ「友だち追加」ボタンを出す（満了案内を届けるには友だち登録が必要）
+  function showFriendButton(btn) {
+    if (!S.LINE_FRIEND_URL) return;
+    btn.href = S.LINE_FRIEND_URL;
+    if (!useLiff) { btn.hidden = PREVIEW ? false : true; return; }
+    liff.getFriendship().then(function (f) { btn.hidden = !!(f && f.friendFlag); }).catch(function () { btn.hidden = false; });
+  }
+  function closeWin() { if (useLiff) liff.closeWindow(); }
+  $('closeBtn').addEventListener('click', closeWin);
+  $('linkCloseBtn').addEventListener('click', closeWin);
+  $('nextBtn').addEventListener('click', resetAll);
+
+  function resetForm() {
+    document.querySelectorAll('#viewForm input[type=text], #viewForm input[type=tel], #viewForm input[type=email]').forEach(function (el) { el.value = ''; });
+    document.querySelectorAll('#viewForm input[type=radio]').forEach(function (el) { el.checked = el.name === 'era' && el.value === 'showa'; });
+    document.querySelectorAll('#viewForm select').forEach(function (el) { el.value = ''; });
+    document.querySelectorAll('#viewForm input[type=checkbox]').forEach(function (el) { el.checked = false; });
+    document.querySelectorAll('.consent').forEach(function (el) { el.classList.remove('ok'); });
+    document.querySelectorAll('.has-err').forEach(function (el) { el.classList.remove('has-err'); });
+    $('summaryErr').classList.remove('show');
+    $('zipStatus').textContent = '入力すると住所が自動で入ります';
+    lastAuto = ''; current = null; clearSig(); bHint();
+  }
+  function resetAll() {
+    if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+    $('ovIdle').classList.remove('show');
+    $('qrImg').innerHTML = '';
+    resetForm(); show('viewForm');
+  }
+
+  // ---------- LINE連携ページ（iPad受付後のQRから開く） ----------
+  function startLink(token) {
+    $('loadingText').textContent = 'LINEと連携しています…';
+    show('viewLoading');
+    var idToken = '';
+    if (useLiff) { try { idToken = liff.getIDToken() || ''; } catch (e) {} }
+    api('link', { token: token, idToken: idToken })
+      .then(function (res) {
+        $('linkMark').className = 'mark';
+        $('linkMark').textContent = '✓';
+        $('linkTitle').textContent = 'LINE連携が完了しました';
+        $('linkMsg').textContent = res.name + ' 様、ありがとうございます。保証期間満了の際に、こちらのLINEでご案内をお送りします。';
+        showFriendButton($('linkFriendBtn'));
+      })
+      .catch(function (err) {
+        $('linkMark').className = 'mark ng';
+        $('linkMark').textContent = '!';
+        $('linkTitle').textContent = 'LINE連携ができませんでした';
+        $('linkMsg').textContent = (err && err.message && err.message !== 'Failed to fetch') ? err.message : '通信状態をご確認のうえ、もう一度QRコードを読み取ってください。';
+      })
+      .then(function () { $('linkCloseBtn').hidden = !useLiff; show('viewLink'); });
+  }
+
+  // ---------- 店頭iPad：放置されたら入力を消去 ----------
+  var idleTimer = null, idleCount = null;
+  function hasInput() {
+    if (current) return true;
+    return Array.prototype.some.call(document.querySelectorAll('#viewForm input[type=text], #viewForm input[type=tel], #viewForm input[type=email]'), function (el) { return el.value; })
+      || !!document.querySelector('#viewForm input[type=checkbox]:checked') || sigHas;
+  }
+  function poke() {
+    if (!KIOSK) return;
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(function () {
+      if (!$('viewDone').hidden || !hasInput()) return poke();
+      var s = 20; $('idleSec').textContent = s; $('ovIdle').classList.add('show');
+      idleCount = setInterval(function () {
+        s--; $('idleSec').textContent = s;
+        if (s <= 0) { clearInterval(idleCount); resetAll(); poke(); }
+      }, 1000);
+    }, 180000); // 3分
+  }
+  $('idleKeep').addEventListener('click', function () { clearInterval(idleCount); $('ovIdle').classList.remove('show'); poke(); });
+  ['touchstart', 'keydown', 'input', 'scroll'].forEach(function (t) { document.addEventListener(t, poke, { passive: true }); });
+
+  bHint();
+  boot();
+})();
+</script>
+</body>
+</html>
