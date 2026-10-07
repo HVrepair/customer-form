@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>保証満了アンケート｜ハイブリッドバッテリーリペアセンター</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ink: #1b2a2f;
+    --sub: #5b6b70;
+    --line: #d5dfe1;
+    --bg: #f2f5f4;
+    --card: #ffffff;
+    --brand: #1f4e5f;
+    --accent: #0f7a5a;
+    --accent-tint: #e5f4ee;
+    --req: #c2410c;
+    --err: #b91c1c;
+    --err-tint: #fdecec;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", Meiryo, system-ui, sans-serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  .kiosk body, body.kiosk { font-size: 19px; }
+  header.bar {
+    background: var(--brand); color: #fff; padding: 14px 16px;
+    padding-top: max(14px, env(safe-area-inset-top));
+  }
+  header.bar .in { max-width: 760px; margin: 0 auto; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  header.bar .shop { font-weight: 700; letter-spacing: .02em; }
+  header.bar .store { font-size: .85em; opacity: .85; }
+  main { max-width: 760px; margin: 0 auto; padding: 16px 16px 120px; }
+  h1 { font-size: 1.45em; margin: 8px 0 4px; }
+  .lead { color: var(--sub); margin: 0 0 16px; font-size: .95em; }
+  .card { background: var(--card); border-radius: var(--radius); padding: 18px 18px 6px; margin: 0 0 16px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  .card h2 { font-size: 1.1em; margin: 0 0 12px; padding-bottom: 8px; border-bottom: 2px solid var(--brand); color: var(--brand); }
+  .field { margin: 0 0 18px; }
+  .field > label, .field > .lbl { display: flex; align-items: center; gap: 8px; font-weight: 700; margin-bottom: 6px; }
+  .badge { font-size: .7em; font-weight: 700; padding: 1px 8px; border-radius: 999px; line-height: 1.6; }
+  .badge.req { background: var(--req); color: #fff; }
+  .badge.opt { background: #e3e8ea; color: var(--sub); }
+  .hint { font-size: .82em; color: var(--sub); margin-top: 4px; }
+  input[type=text], input[type=tel], input[type=email], select {
+    width: 100%; font-size: 1em; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 10px;
+    background: #fff; color: var(--ink); font-family: inherit; -webkit-appearance: none; appearance: none;
+  }
+  select { background-image: linear-gradient(45deg, transparent 50%, var(--sub) 50%), linear-gradient(135deg, var(--sub) 50%, transparent 50%);
+    background-position: calc(100% - 18px) 55%, calc(100% - 12px) 55%; background-size: 6px 6px; background-repeat: no-repeat; padding-right: 32px; }
+  input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(15,122,90,.18); }
+  .row { display: flex; gap: 10px; }
+  .row > * { flex: 1; }
+  .zip-row { display: flex; gap: 10px; align-items: center; }
+  .zip-row input { max-width: 200px; }
+  .zip-row .status { font-size: .85em; color: var(--sub); }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+  .tile { position: relative; }
+  .tile input { position: absolute; opacity: 0; pointer-events: none; }
+  .tile span {
+    display: flex; align-items: center; justify-content: center; text-align: center; min-height: 56px; padding: 10px 12px;
+    border: 1.5px solid var(--line); border-radius: 12px; background: #fff; font-weight: 700; cursor: pointer; user-select: none;
+  }
+  .tile input:checked + span { border-color: var(--accent); background: var(--accent-tint); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .tile input:checked + span::before { content: "✓"; margin-right: 6px; }
+  .tile input:focus-visible + span { box-shadow: 0 0 0 3px rgba(15,122,90,.25); }
+  .bday { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 8px; align-items: center; }
+  .bday .unit { display: flex; align-items: center; gap: 6px; }
+  .bday .unit input, .bday .unit select { flex: 1; min-width: 0; }
+  .consent { border: 1.5px solid var(--line); border-radius: 12px; margin: 0 0 14px; overflow: hidden; }
+  .consent .ct { font-weight: 700; padding: 12px 14px 4px; }
+  .consent .cb { padding: 0 14px 12px; font-size: .9em; color: #34464b; }
+  .consent label.chk {
+    display: flex; align-items: center; gap: 12px; padding: 14px; background: #f7faf9; border-top: 1px solid var(--line);
+    font-weight: 700; cursor: pointer; user-select: none;
+  }
+  .consent input[type=checkbox] { width: 28px; height: 28px; accent-color: var(--accent); flex: none; }
+  .consent.ok { border-color: var(--accent); }
+  .consent.ok label.chk { background: var(--accent-tint); color: var(--accent); }
+  .sigwrap { position: relative; border: 1.5px dashed #9fb3b8; border-radius: 12px; background: #fff; touch-action: none; }
+  .sigwrap canvas { display: block; width: 100%; height: 190px; border-radius: 12px; }
+  .sigwrap .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #a3b3b7; pointer-events: none; font-size: .95em; }
+  .sigwrap.has .ph { display: none; }
+  .sigtools { display: flex; justify-content: flex-end; margin-top: 6px; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit; font-size: 1em; font-weight: 700;
+    border-radius: 12px; border: 0; padding: 14px 22px; cursor: pointer; min-height: 54px;
+  }
+  .btn.primary { background: var(--accent); color: #fff; }
+  .btn.primary:disabled { opacity: .55; }
+  .btn.ghost { background: #fff; color: var(--brand); border: 1.5px solid var(--brand); }
+  .btn.small { min-height: 40px; padding: 6px 14px; font-size: .85em; }
+  .actionbar {
+    position: fixed; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,.96); border-top: 1px solid var(--line);
+    padding: 12px 16px; padding-bottom: max(12px, env(safe-area-inset-bottom)); z-index: 5;
+  }
+  .actionbar .in { max-width: 760px; margin: 0 auto; display: flex; gap: 10px; }
+  .actionbar .btn { flex: 1; }
+  .field.has-err input, .field.has-err select, .field.has-err .tile span, .consent.has-err, .field.has-err .sigwrap { border-color: var(--err); }
+  .errmsg { display: none; color: var(--err); font-size: .85em; font-weight: 700; margin-top: 4px; }
+  .has-err > .errmsg, .consent.has-err .errmsg { display: block; }
+  .consent .errmsg { padding: 0 14px 10px; }
+  .summary-err { display: none; background: var(--err-tint); color: var(--err); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; font-weight: 700; }
+  .summary-err.show { display: block; }
+  dl.confirm { margin: 0; }
+  dl.confirm div { display: grid; grid-template-columns: minmax(6em, 9em) minmax(0, 1fr); gap: 10px; padding: 10px 0; border-bottom: 1px solid #edf1f2; }
+  dl.confirm dt { color: var(--sub); font-size: .9em; }
+  dl.confirm dd { margin: 0; font-weight: 600; word-break: break-all; }
+  dl.confirm img { width: 100%; max-width: 260px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+  .done { text-align: center; padding: 48px 8px; }
+  .done .mark { width: 84px; height: 84px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 46px; line-height: 84px; margin: 0 auto 18px; }
+  .done h1 { margin-bottom: 8px; }
+  .done .no { display: inline-block; margin: 14px 0; padding: 8px 18px; background: #fff; border-radius: 10px; font-weight: 700; letter-spacing: .05em; }
+  .done .line-btn { display: inline-flex; margin-top: 18px; background: #06c755; color: #fff; text-decoration: none; }
+  .done .count { color: var(--sub); margin-top: 20px; font-size: .9em; }
+  .overlay { position: fixed; inset: 0; background: rgba(20,35,40,.55); display: none; align-items: center; justify-content: center; z-index: 20; padding: 16px; }
+  .overlay.show { display: flex; }
+  .overlay .box { background: #fff; border-radius: 16px; padding: 26px 22px; text-align: center; max-width: 420px; width: 100%; }
+  .spinner { width: 44px; height: 44px; border: 4px solid #d8e6e2; border-top-color: var(--accent); border-radius: 50%; margin: 0 auto 14px; animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .preview-note { background: #fff7e0; color: #7a5a00; font-size: .8em; text-align: center; padding: 6px; }
+  [hidden] { display: none !important; }
+  @media (min-width: 768px) {
+    main { padding-top: 24px; }
+    .card { padding: 22px 26px 8px; }
+  }
+  .qrbox { margin: 22px auto 0; max-width: 360px; background: #fff; border-radius: 16px; padding: 18px 18px 8px; border: 2px solid #06c755; }
+  .qrbox .qrtitle { font-weight: 700; color: #058a3c; margin-bottom: 8px; }
+  .qrbox .qr { width: 220px; height: 220px; margin: 0 auto; }
+  .qrbox .qr svg { width: 100%; height: 100%; display: block; }
+  .linebox { margin-top: 14px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .linebox p { margin: 0; }
+  .done .mark.ng { background: var(--err); }
+  .done .spinner { margin-top: 40px; }
+  .line-note { display: flex; gap: 10px; align-items: flex-start; background: #e9f9ef; color: #165c33; border-radius: 10px; padding: 10px 14px; margin: 0 0 16px; font-size: .88em; }
+  .line-note b { color: #06a046; }
+</style>
+<style>
+  .tiles.vertical { grid-template-columns: 1fr; }
+  .tiles.vertical .tile span { justify-content: flex-start; min-height: 52px; padding-left: 18px; }
+  .field > .lbl { align-items: flex-start; flex-wrap: wrap; line-height: 1.5; }
+  .qno { display: inline-block; background: var(--brand); color: #fff; border-radius: 6px; padding: 0 8px; font-size: .85em; margin-right: 2px; }
+  .unitrow { display: flex; align-items: center; gap: 8px; max-width: 280px; }
+  textarea { width: 100%; font-size: 1em; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 10px; font-family: inherit; resize: vertical; }
+  textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(15,122,90,.18); }
+  .field.has-err textarea { border-color: var(--err); }
+  .coupon { margin: 24px auto 0; max-width: 380px; background: #fff; border: 2px dashed #e8a33d; border-radius: 16px; padding: 18px; }
+  .coupon-title { font-weight: 700; color: #b06d00; margin-bottom: 10px; }
+  .coupon-btn { background: #06c755; color: #fff; text-decoration: none; width: 100%; }
+  .review { margin-top: 22px; }
+  .review .btn { text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="preview-note" id="previewNote" hidden>プレビュー表示です（送信してもデータは保存されません）</div>
+<header class="bar"><div class="in">
+  <div class="shop">ハイブリッドバッテリーリペアセンター</div>
+  <div class="store" id="storeName"></div>
+</div></header>
+
+<main id="viewLoading">
+  <div class="done"><div class="spinner"></div><p>読み込んでいます…</p></div>
+</main>
+
+<main id="viewForm" hidden>
+  <h1>保証満了アンケート</h1>
+  <p class="lead"><span id="custName"></span>この度は当店をご利用いただき、誠にありがとうございました。今後のサービス向上のため、ご協力をお願いいたします。<br>回答後、次回ご利用いただける割引クーポンをお渡しします。</p>
+  <div class="summary-err" id="summaryErr"></div>
+  <section class="card" id="questions"></section>
+</main>
+
+<main id="viewDone" hidden>
+  <div class="done">
+    <div class="mark">✓</div>
+    <h1>ご回答ありがとうございました</h1>
+    <p id="doneMsg">いただいたご意見は、今後のサービス向上に役立てさせていただきます。</p>
+    <div class="coupon" id="couponBox" hidden>
+      <div class="coupon-title">次回ご利用時の割引クーポン</div>
+      <a class="btn coupon-btn" id="couponBtn" href="#">クーポンを受け取る</a>
+      <p class="hint">ご利用時に、クーポン画面をスタッフにお見せください。</p>
+    </div>
+    <div class="review" id="reviewBox" hidden>
+      <p class="hint">よろしければ、Googleの口コミにもご感想をお寄せください。</p>
+      <a class="btn ghost" id="reviewBtn" href="#" target="_blank" rel="noopener">Googleで口コミを書く</a>
+    </div>
+  </div>
+</main>
+
+<main id="viewFatal" hidden>
+  <div class="done">
+    <div class="mark ng">!</div>
+    <h1>ページを開けませんでした</h1>
+    <p id="fatalMsg"></p>
+  </div>
+</main>
+
+<div class="actionbar" id="barForm" hidden><div class="in">
+  <button type="button" class="btn primary" id="sendBtn">回答を送信する</button>
+</div></div>
+
+<div class="overlay" id="ovSending"><div class="box"><div class="spinner"></div>送信しています…</div></div>
+
+<script>
+// =====================================================================
+// 設定（index.html と同じ API_URL を入れます）
+// =====================================================================
+var SETTINGS = {
+  API_URL: 'https://script.google.com/macros/s/AKfycbxWdKFKCVx-yGN0EtmZsXArr-4xQwkagJAmybeB9Q34a_Xb8mKuxEl9kKw2aWM9mZKI/exec',
+  STORES: { kanda: '苅田行橋店', fukuoka: '福岡インター店' }
+};
+</script>
+<script>
+(function () {
+  'use strict';
+  var S = SETTINGS, PREVIEW = !S.API_URL;
+  var $ = function (id) { return document.getElementById(id); };
+  var token = new URLSearchParams(location.search).get('t') || '';
+  var QUESTIONS = [];
+  if (PREVIEW) $('previewNote').hidden = false;
+
+  function api(action, payload) {
+    if (PREVIEW) return fake(action);
+    return fetch(S.API_URL, { method: 'POST', body: JSON.stringify(Object.assign({ action: action }, payload || {})) })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { if (!j.ok) throw new Error(j.error || 'エラーが発生しました'); return j; });
+  }
+  function fake(action) {
+    return new Promise(function (res) {
+      setTimeout(function () {
+        if (action === 'surveyInfo') res({ ok: true, name: '山田 太郎', store: '苅田行橋店', answered: false, questions: [
+          { id: 'q1', type: 'single', required: true, label: '修理後のお車の調子はいかがですか？', options: ['とても良い', '良い', '普通', 'やや悪い', '悪い'] },
+          { id: 'q2', type: 'single', required: true, label: '保証期間中に、ハイブリッドシステムの警告灯が点灯したことはありましたか？', options: ['なかった', 'あった', 'わからない'] },
+          { id: 'q3', type: 'number', required: false, label: '現在の走行距離（おおよそで構いません）', unit: 'km' },
+          { id: 'q4', type: 'single', required: true, label: 'スタッフの対応・説明はいかがでしたか？', options: ['とても満足', '満足', '普通', 'やや不満', '不満'] },
+          { id: 'q8', type: 'text', required: false, label: 'ご意見・ご感想があればご自由にお書きください' }
+        ] });
+        else res({ ok: true, couponUrl: 'https://line.me/R/coupon/preview', reviewUrl: 'https://g.page/r/preview/review' });
+      }, 400);
+    });
+  }
+  function show(v) {
+    ['viewLoading', 'viewForm', 'viewDone', 'viewFatal'].forEach(function (x) { $(x).hidden = x !== v; });
+    $('barForm').hidden = v !== 'viewForm';
+    window.scrollTo(0, 0);
+  }
+  function fatal(m) { $('fatalMsg').textContent = m; show('viewFatal'); }
+  function toHalf(v) { return String(v || '').replace(/[！-～]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }); }
+
+  function render(info) {
+    $('storeName').textContent = info.store || '';
+    $('custName').textContent = info.name ? info.name + ' 様　' : '';
+    QUESTIONS = info.questions || [];
+    var box = $('questions'); box.innerHTML = '';
+    QUESTIONS.forEach(function (q, i) {
+      var f = document.createElement('div'); f.className = 'field'; f.dataset.f = q.id;
+      var lbl = document.createElement('div'); lbl.className = 'lbl';
+      lbl.innerHTML = '<span class="qno">Q' + (i + 1) + '</span><span class="qt"></span> <span class="badge ' + (q.required ? 'req">必須' : 'opt">任意') + '</span>';
+      lbl.querySelector('.qt').textContent = q.label;
+      f.appendChild(lbl);
+      if (q.type === 'single') {
+        var t = document.createElement('div'); t.className = 'tiles vertical';
+        q.options.forEach(function (o) {
+          var l = document.createElement('label'); l.className = 'tile';
+          l.innerHTML = '<input type="radio"><span></span>';
+          l.querySelector('input').name = q.id; l.querySelector('input').value = o;
+          l.querySelector('span').textContent = o;
+          t.appendChild(l);
+        });
+        f.appendChild(t);
+      } else if (q.type === 'number') {
+        var u = document.createElement('div'); u.className = 'unitrow';
+        u.innerHTML = '<input type="tel" inputmode="numeric" maxlength="9" placeholder="例）120000"><span></span>';
+        u.querySelector('input').id = q.id; u.querySelector('span').textContent = q.unit || '';
+        f.appendChild(u);
+      } else {
+        var ta = document.createElement('textarea'); ta.id = q.id; ta.rows = 4; ta.maxLength = 1000;
+        f.appendChild(ta);
+      }
+      var e = document.createElement('div'); e.className = 'errmsg'; e.textContent = 'ご回答をお願いします';
+      f.appendChild(e);
+      f.addEventListener('change', function () { f.classList.remove('has-err'); });
+      box.appendChild(f);
+    });
+  }
+
+  function collect() {
+    var a = {}, errs = [];
+    QUESTIONS.forEach(function (q) {
+      var v = '';
+      if (q.type === 'single') { var r = document.querySelector('input[name="' + q.id + '"]:checked'); v = r ? r.value : ''; }
+      else if (q.type === 'number') { v = toHalf($(q.id).value).replace(/[^\d]/g, ''); }
+      else { v = $(q.id).value.trim(); }
+      a[q.id] = v;
+      if (q.required && !v) errs.push(q.id);
+    });
+    return { answers: a, errs: errs };
+  }
+
+  function done(res) {
+    if (res.couponUrl) { $('couponBtn').href = res.couponUrl; $('couponBox').hidden = false; }
+    if (res.reviewUrl) { $('reviewBtn').href = res.reviewUrl; $('reviewBox').hidden = false; }
+    show('viewDone');
+  }
+
+  $('sendBtn').addEventListener('click', function () {
+    document.querySelectorAll('.has-err').forEach(function (el) { el.classList.remove('has-err'); });
+    var r = collect();
+    if (r.errs.length) {
+      r.errs.forEach(function (id) { document.querySelector('[data-f="' + id + '"]').classList.add('has-err'); });
+      $('summaryErr').textContent = '未回答の質問があります（Q' + r.errs.map(function (id) {
+        return QUESTIONS.findIndex(function (q) { return q.id === id; }) + 1; }).join('、Q') + '）';
+      $('summaryErr').classList.add('show');
+      document.querySelector('[data-f="' + r.errs[0] + '"]').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    $('summaryErr').classList.remove('show');
+    $('sendBtn').disabled = true; $('ovSending').classList.add('show');
+    api('surveySubmit', { token: token, answers: r.answers })
+      .then(function (res) { $('ovSending').classList.remove('show'); done(res); })
+      .catch(function (err) {
+        $('ovSending').classList.remove('show'); $('sendBtn').disabled = false;
+        alert((err && err.message && err.message !== 'Failed to fetch') ? err.message : '通信状態をご確認のうえ、もう一度お試しください。');
+      });
+  });
+
+  // 起動
+  if (!token && !PREVIEW) { fatal('アンケートのURLが正しくありません。LINEのメッセージから開き直してください。'); return; }
+  api('surveyInfo', { token: token })
+    .then(function (info) {
+      render(info);
+      if (info.answered) {
+        $('doneMsg').textContent = 'このアンケートはすでにご回答いただいています。ありがとうございました。';
+        done(info);
+      } else show('viewForm');
+    })
+    .catch(function (err) { fatal((err && err.message && err.message !== 'Failed to fetch') ? err.message : '通信状態をご確認のうえ、もう一度お試しください。'); });
+})();
+</script>
+</body>
+</html>
