@@ -384,7 +384,7 @@ var SETTINGS = {
   // 手書き署名： 'required'（必須） / 'optional'（任意） / 'off'（出さない）
   SIGNATURE: 'required',
   // 店頭iPad：送信完了後、次のお客様用に戻るまでの秒数（QRを読み取る時間を含む）
-  KIOSK_RESET_SEC: 60,
+  KIOSK_RESET_SEC: 300,
   STORES: { kanda: '苅田行橋店', fukuoka: '福岡インター店' },
   // 承諾文言（変更時はCode.gsのCONSENTSも同じ内容に変更してください）
   CONSENTS: [
@@ -842,13 +842,17 @@ var SETTINGS = {
     $('kioskQr').hidden = true; $('phoneLine').hidden = true;
     $('friendBtn').hidden = true; $('relinkBtn').hidden = true; $('sendCodeBtn').hidden = true;
 
+    if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
     if (KIOSK) {
       $('doneMsg').textContent = '入力が終わりましたら、iPadをスタッフにお渡しください。';
       var kUrl = lineLinkUrl(res);
       if (kUrl) { drawQr($('qrImg'), kUrl); $('kioskQr').hidden = false; }
       $('nextBtn').hidden = false; $('closeBtn').hidden = true;
-      var left = S.KIOSK_RESET_SEC || 60;
-      var tick = function () { $('doneCount').textContent = left + '秒後に最初の画面に戻ります'; };
+      var left = S.KIOSK_RESET_SEC || 300;
+      var tick = function () {
+        var m = Math.floor(left / 60), sec = left % 60;
+        $('doneCount').textContent = (m ? m + '分' : '') + (sec || !m ? sec + '秒' : '') + '後に最初の画面に戻ります';
+      };
       tick();
       countdownTimer = setInterval(function () { left--; tick(); if (left <= 0) resetAll(); }, 1000);
     } else {
