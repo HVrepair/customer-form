@@ -654,7 +654,7 @@ var SETTINGS = {
       .then(function (j) { if (seq === quoteSeq) setQuote(j); })
       .catch(function () { if (seq === quoteSeq) setQuote(null); });
   }
-  $('phone').addEventListener('input', function () { clearTimeout(quoteTimer); quoteTimer = setTimeout(checkQuote, 600); });
+  $('phone').addEventListener('input', function () { clearTimeout(quoteTimer); quoteTimer = setTimeout(checkQuote, 300); });
   $('phone').addEventListener('blur', function () { clearTimeout(quoteTimer); checkQuote(); });
 
   function loadOptions() {
