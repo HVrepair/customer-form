@@ -354,7 +354,7 @@
   <button type="button" class="btn primary" id="sendBtn">送信する</button>
 </div></div>
 
-<div class="overlay" id="ovSending"><div class="box"><div class="spinner"></div>送信しています…</div></div>
+<div class="overlay" id="ovSending"><div class="box"><div class="spinner"></div><span id="sendingText">送信しています…</span></div></div>
 <div class="overlay" id="ovIdle"><div class="box">
   <p style="margin-top:0;font-weight:700">入力を続けますか？</p>
   <p class="hint">操作がない場合、<span id="idleSec">20</span>秒後に入力内容を消去します。</p>
@@ -415,9 +415,28 @@ var SETTINGS = {
   function api(action, payload) {
     if (PREVIEW) return fakeApi(action, payload);
     var body = JSON.stringify(Object.assign({ action: action }, payload || {}));
-    return fetch(S.API_URL, { method: 'POST', body: body, redirect: 'follow' })
+    // 60秒たっても返事がなければ打ち切る（電波が弱いとき固まらないように）
+    var ctl = window.AbortController ? new AbortController() : null;
+    var timer = ctl ? setTimeout(function () { ctl.abort(); }, 60000) : null;
+    return fetch(S.API_URL, { method: 'POST', body: body, redirect: 'follow', signal: ctl ? ctl.signal : undefined })
       .then(function (r) { return r.json(); })
-      .then(function (j) { if (!j.ok) throw new Error(j.error || '送信できませんでした'); return j; });
+      .then(function (j) {
+        if (timer) clearTimeout(timer);
+        if (!j.ok) { var e = new Error(j.error || '送信できませんでした'); e.server = true; throw e; }
+        return j;
+      }, function (err) { if (timer) clearTimeout(timer); err.net = true; throw err; });
+  }
+  // 通信の途中で切れた（サーバーには届いている可能性あり）かどうか
+  function isNetErr(err) { return !!(err && !err.server); }
+  // 受付の送信：通信が切れたら自動で送り直す（同じ送信番号なので二重登録にはならない）
+  function submitWithRetry(payload, left) {
+    return api('submit', payload).catch(function (err) {
+      if (left > 1 && isNetErr(err)) {
+        $('sendingText').textContent = '通信が不安定なため、もう一度送信しています…';
+        return new Promise(function (r) { setTimeout(r, 2500); }).then(function () { return submitWithRetry(payload, left - 1); });
+      }
+      throw err;
+    });
   }
   function fakeApi(action, payload) {
     return new Promise(function (res) {
@@ -823,7 +842,8 @@ var SETTINGS = {
     $('ovSending').classList.add('show');
     var idToken = '';
     if (useLiff) { try { idToken = liff.getIDToken() || ''; } catch (e) {} }
-    api('submit', { data: current, idToken: idToken })
+    $('sendingText').textContent = '送信しています…';
+    submitWithRetry({ data: current, idToken: idToken }, 4)
       .then(function (res) {
         $('ovSending').classList.remove('show'); $('sendBtn').disabled = false;
         done(res);
@@ -831,8 +851,9 @@ var SETTINGS = {
       })
       .catch(function (err) {
         $('ovSending').classList.remove('show'); $('sendBtn').disabled = false;
-        $('errText').textContent = err && err.message && err.message !== 'Failed to fetch'
-          ? err.message.replace(/^(Exception|Error):\s*/, '') : '通信状態をご確認のうえ、もう一度お試しください。';
+        $('errText').textContent = isNetErr(err)
+          ? '通信が不安定なため、送信結果を確認できませんでした。Wi-Fiをご確認のうえ、もう一度［送信する］を押してください（二重に登録されることはありません）。'
+          : String(err.message || '').replace(/^(Exception|Error):\s*/, '');
         $('ovError').classList.add('show');
       });
   });
@@ -941,7 +962,7 @@ var SETTINGS = {
         $('linkMark').className = 'mark ng';
         $('linkMark').textContent = '!';
         $('linkTitle').textContent = 'LINE連携ができませんでした';
-        $('linkMsg').textContent = (err && err.message && err.message !== 'Failed to fetch') ? err.message : '通信状態をご確認のうえ、もう一度QRコードを読み取ってください。';
+        $('linkMsg').textContent = isNetErr(err) ? '通信状態をご確認のうえ、もう一度QRコードを読み取ってください。' : err.message;
       })
       .then(function () { $('linkCloseBtn').hidden = !useLiff; show('viewLink'); });
   }
