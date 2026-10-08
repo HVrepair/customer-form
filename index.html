@@ -138,6 +138,30 @@
   .done .spinner { margin-top: 40px; }
   .line-note { display: flex; gap: 10px; align-items: flex-start; background: #e9f9ef; color: #165c33; border-radius: 10px; padding: 10px 14px; margin: 0 0 16px; font-size: .88em; }
   .line-note b { color: #06a046; }
+  /* お見積り・オプション */
+  .quote { border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: -4px 0 18px; background: #f7faf9; }
+  .quote.found { border-color: var(--accent); background: var(--accent-tint); }
+  .quote .qh { font-weight: 700; color: var(--brand); font-size: .9em; margin-bottom: 6px; }
+  .quote .qmsg { font-size: .9em; color: var(--sub); }
+  .quote .qmsg .spinner { width: 18px; height: 18px; border-width: 3px; margin: 0 8px 0 0; display: inline-block; vertical-align: -3px; }
+  .quote dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 16px; margin: 0; }
+  .quote dt { color: var(--sub); font-size: .9em; }
+  .quote dd { margin: 0; font-weight: 700; word-break: break-all; }
+  .quote dd.price { font-size: 1.25em; color: var(--brand); }
+  .opt { display: flex; align-items: center; gap: 12px; border: 1.5px solid var(--line); border-radius: 12px; padding: 14px; margin: 0 0 10px; background: #fff; cursor: pointer; user-select: none; }
+  .opt input { width: 28px; height: 28px; accent-color: var(--accent); flex: none; margin: 0; }
+  .opt .on { flex: 1; min-width: 0; font-weight: 700; }
+  .opt .on small { display: block; font-weight: 400; font-size: .8em; color: var(--sub); }
+  .opt .op { font-weight: 700; white-space: nowrap; }
+  .opt.checked { border-color: var(--accent); background: var(--accent-tint); color: var(--accent); }
+  .total { border-top: 2px solid var(--brand); margin: 6px 0 16px; padding-top: 8px; }
+  .total .tr { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
+  .total .tr span:last-child { font-weight: 700; white-space: nowrap; }
+  .total .grand { font-size: 1.2em; font-weight: 800; color: var(--brand); border-top: 1px solid var(--line); margin-top: 6px; padding-top: 8px; }
+  .total .tnote { font-size: .85em; color: var(--sub); margin-top: 4px; }
+  .sig-lead { margin: -2px 0 10px; font-size: .92em; }
+  .sig-lead b { color: var(--brand); font-size: 1.1em; }
+  .sig-note { background: #fff4e5; color: #8a4b00; border-radius: 10px; padding: 8px 12px; margin: 0 0 10px; font-size: .88em; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -186,6 +210,7 @@
       <input type="tel" id="phone" autocomplete="tel" inputmode="tel" placeholder="例）090-1234-5678">
       <div class="errmsg">電話番号をご確認ください（ハイフンなしでもOK）</div>
     </div>
+    <div class="quote" id="quoteBox" hidden aria-live="polite"></div>
     <div class="field" data-f="zip">
       <label for="zip">郵便番号 <span class="badge req">必須</span></label>
       <div class="zip-row">
@@ -234,8 +259,17 @@
     <div id="consents"></div>
   </section>
 
+  <section class="card" id="optCard" hidden>
+    <h2>オプション・お支払い金額</h2>
+    <p class="hint" id="optLead" style="margin-top:-4px">ご希望のオプションがあればお選びください（任意）。</p>
+    <div id="optList"></div>
+    <div class="total" id="totalBox"></div>
+  </section>
+
   <section class="card" id="sigCard">
     <h2>ご署名 <span class="badge" id="sigBadge"></span></h2>
+    <p class="sig-lead" id="sigLead">ご承諾事項に同意のうえ、ご署名ください。</p>
+    <div class="sig-note" id="sigNote" hidden></div>
     <div class="field" data-f="signature">
       <div class="sigwrap" id="sigWrap">
         <canvas id="sig"></canvas>
@@ -390,6 +424,10 @@ var SETTINGS = {
       setTimeout(function () {
         if (action === 'submit') res({ ok: true, receiptNo: (STORE === 'fukuoka' ? 'F' : 'K') + '261006-01', linkToken: '0123456789abcdef0123456789abcdef', lineLinked: false });
         else if (action === 'link') res({ ok: true, name: '山田 太郎', receiptNo: 'K261006-01' });
+        else if (action === 'options') res({ ok: true, options: [{ name: 'ヘッドライト磨き', price: 2200, note: '' }, { name: '燃費改善ガソリン添加剤', price: 3300, note: '' }] });
+        else if (action === 'quote') res(/5678$/.test(payload.phone)
+          ? { ok: true, found: true, model: 'プリウス ZVW30', grade: 'スタンダード', warranty: '1年/1.5万キロ', amount: 103000, ref: 'preview.ref' }
+          : { ok: true, found: false });
         else if (action === 'zip') {
           fetch('https://zipcloud.ibsnet.co.jp/api/search?zipcode=' + payload.zip).then(function (r) { return r.json(); })
             .then(function (j) { var x = j.results && j.results[0]; res({ ok: true, address: x ? x.address1 + x.address2 + x.address3 : '' }); })
@@ -448,6 +486,7 @@ var SETTINGS = {
     $('storeName').textContent = S.STORES[STORE];
     if (p.get('link') && !KIOSK) return startLink(p.get('link'));
     if (useLiff) $('lineNote').hidden = false;
+    loadOptions();
     show('viewForm');
     poke();
   }
@@ -482,7 +521,7 @@ var SETTINGS = {
     $('sigBadge').className = 'badge ' + (SIG_MODE === 'required' ? 'req' : 'opt');
     $('sigBadge').textContent = SIG_MODE === 'required' ? '必須' : '任意';
   }
-  var canvas = $('sig'), ctx = canvas.getContext('2d'), drawing = false, lastPt = null;
+  var canvas = $('sig'), ctx = canvas.getContext('2d'), drawing = false, lastPt = null, signedKey = '';
   function sizeCanvas() {
     var r = canvas.getBoundingClientRect(); if (!r.width) return;
     var dpr = window.devicePixelRatio || 1;
@@ -498,10 +537,10 @@ var SETTINGS = {
   canvas.addEventListener('pointermove', function (e) {
     if (!drawing) return; e.preventDefault();
     var p = pt(e); ctx.beginPath(); ctx.moveTo(lastPt.x, lastPt.y); ctx.lineTo(p.x, p.y); ctx.stroke(); lastPt = p;
-    if (!sigHas) { sigHas = true; $('sigWrap').classList.add('has'); fieldOk('signature'); }
+    if (!sigHas) { sigHas = true; $('sigWrap').classList.add('has'); fieldOk('signature'); signedKey = priceKey(); $('sigNote').hidden = true; }
   });
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) { canvas.addEventListener(t, function () { drawing = false; }); });
-  function clearSig() { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.restore(); sigHas = false; $('sigWrap').classList.remove('has'); }
+  function clearSig() { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.restore(); sigHas = false; signedKey = ''; $('sigWrap').classList.remove('has'); }
   $('sigClear').addEventListener('click', clearSig);
   window.addEventListener('resize', sizeCanvas);
 
@@ -566,6 +605,119 @@ var SETTINGS = {
     });
   });
 
+  // ---------- お見積り（受注シートの車種・修理費用）とオプション ----------
+  var OPTIONS = [], QUOTE = null, quotePhone = '', quoteSeq = 0, quoteTimer = null;
+  function yen(n) { return '¥' + String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+  function phoneDigits() { return toHalf($('phone').value).replace(/[^\d]/g, ''); }
+  // 携帯・050は11桁、固定電話は10桁がそろったら照会
+  function phoneComplete(p) { return /^0[5789]0\d{8}$/.test(p) || (!/^0[5789]0/.test(p) && /^0\d{9}$/.test(p)); }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+
+  function renderQuote(state) {
+    var box = $('quoteBox'); box.innerHTML = ''; box.className = 'quote';
+    if (state === 'none') { box.hidden = true; return; }
+    box.hidden = false;
+    if (state === 'loading') {
+      var m = el('div', 'qmsg'); m.appendChild(el('span', 'spinner')); m.appendChild(document.createTextNode('ご依頼内容を確認しています…'));
+      box.appendChild(m); return;
+    }
+    if (!QUOTE) {
+      box.appendChild(el('div', 'qh', 'ご依頼内容'));
+      box.appendChild(el('div', 'qmsg', '車種・修理費用は、スタッフからご案内します。'));
+      return;
+    }
+    box.classList.add('found');
+    box.appendChild(el('div', 'qh', 'ご依頼内容'));
+    var dl = el('dl');
+    var add = function (k, v, cls) { dl.appendChild(el('dt', '', k)); dl.appendChild(el('dd', cls || '', v)); };
+    add('車種', QUOTE.model || '－');
+    if (QUOTE.grade) add('グレード', QUOTE.grade + (QUOTE.warranty ? '（保証 ' + QUOTE.warranty + '）' : ''));
+    add('修理費用', yen(QUOTE.amount) + '（税込）', 'price');
+    box.appendChild(dl);
+  }
+  function setQuote(q) {
+    QUOTE = q && q.found ? q : null;
+    renderQuote('done');
+    updateTotal();
+  }
+  function checkQuote() {
+    var p = phoneDigits();
+    if (!phoneComplete(p)) {
+      if (quotePhone) { quotePhone = ''; quoteSeq++; QUOTE = null; renderQuote('none'); updateTotal(); }
+      return;
+    }
+    if (p === quotePhone) return;
+    quotePhone = p;
+    var seq = ++quoteSeq;
+    QUOTE = null; renderQuote('loading'); updateTotal();
+    api('quote', { phone: p })
+      .then(function (j) { if (seq === quoteSeq) setQuote(j); })
+      .catch(function () { if (seq === quoteSeq) setQuote(null); });
+  }
+  $('phone').addEventListener('input', function () { clearTimeout(quoteTimer); quoteTimer = setTimeout(checkQuote, 600); });
+  $('phone').addEventListener('blur', function () { clearTimeout(quoteTimer); checkQuote(); });
+
+  function loadOptions() {
+    return api('options').then(function (j) { OPTIONS = j.options || []; })
+      .catch(function () { /* 前回の一覧のまま */ })
+      .then(renderOptions);
+  }
+  function selectedOptions() {
+    var out = [];
+    document.querySelectorAll('#optList input:checked').forEach(function (cb) { var o = OPTIONS[cb.dataset.i]; if (o) out.push(o); });
+    return out;
+  }
+  function renderOptions() {
+    var keep = selectedOptions().map(function (o) { return o.name; });
+    var box = $('optList'); box.innerHTML = '';
+    OPTIONS.forEach(function (o, i) {
+      var l = el('label', 'opt');
+      var cb = document.createElement('input'); cb.type = 'checkbox'; cb.dataset.i = i; cb.checked = keep.indexOf(o.name) >= 0;
+      var name = el('span', 'on', o.name); if (o.note) name.appendChild(el('small', '', o.note));
+      l.appendChild(cb); l.appendChild(name); l.appendChild(el('span', 'op', '＋' + yen(o.price)));
+      l.classList.toggle('checked', cb.checked);
+      cb.addEventListener('change', function () { l.classList.toggle('checked', cb.checked); updateTotal(); });
+      box.appendChild(l);
+    });
+    updateTotal();
+  }
+  function optionSum(list) { return list.reduce(function (a, o) { return a + o.price; }, 0); }
+  function priceKey() {
+    return (QUOTE ? QUOTE.amount : '-') + '|' + selectedOptions().map(function (o) { return o.name + ':' + o.price; }).join(',');
+  }
+  function updateTotal() {
+    var sel = selectedOptions(), sum = optionSum(sel);
+    $('optCard').hidden = !OPTIONS.length && !QUOTE;
+    $('optLead').hidden = !OPTIONS.length;
+    var t = $('totalBox'); t.innerHTML = '';
+    var row = function (k, v, cls) { var r = el('div', 'tr' + (cls ? ' ' + cls : '')); r.appendChild(el('span', '', k)); r.appendChild(el('span', '', v)); t.appendChild(r); };
+    if (QUOTE) row('修理費用' + (QUOTE.model ? '（' + QUOTE.model + '）' : ''), yen(QUOTE.amount));
+    sel.forEach(function (o) { row(o.name, yen(o.price)); });
+    if (QUOTE) row('お支払い合計（税込）', yen(QUOTE.amount + sum), 'grand');
+    else if (sel.length) {
+      row('オプション合計（税込）', yen(sum), 'grand');
+      t.appendChild(el('div', 'tnote', '修理費用は、スタッフからご案内します。'));
+    }
+    t.hidden = !t.childNodes.length;
+    // 署名欄の上に、署名していただく金額を出す
+    var lead = $('sigLead'); lead.innerHTML = '';
+    if (QUOTE) {
+      lead.appendChild(document.createTextNode('お支払い合計 '));
+      lead.appendChild(el('b', '', yen(QUOTE.amount + sum) + '（税込）'));
+      lead.appendChild(document.createTextNode(' とご承諾事項に同意のうえ、ご署名ください。'));
+    } else if (sel.length) {
+      lead.textContent = 'ご選択のオプション（' + yen(sum) + '・税込）とご承諾事項に同意のうえ、ご署名ください。';
+    } else {
+      lead.textContent = 'ご承諾事項に同意のうえ、ご署名ください。';
+    }
+    // 署名したあとに金額が変わったら、署名をやり直してもらう
+    if (sigHas && signedKey && signedKey !== priceKey()) {
+      clearSig();
+      $('sigNote').textContent = 'お支払い金額が変わったため、お手数ですがもう一度ご署名ください。';
+      $('sigNote').hidden = false;
+    }
+  }
+
   // ---------- 入力チェック ----------
   function radio(name) { var r = document.querySelector('input[name=' + name + ']:checked'); return r ? r.value : ''; }
   function fieldEl(f) { return document.querySelector('[data-f="' + f + '"]'); }
@@ -598,6 +750,8 @@ var SETTINGS = {
     if (!d.payment) errs.push('payment');
     if (!d.receipt) errs.push('receipt');
     S.CONSENTS.forEach(function (c) { d[c.key] = $(c.key).checked; if (!d[c.key]) errs.push(c.key); });
+    d.options = selectedOptions().map(function (o) { return { name: o.name, price: o.price }; });
+    d.quoteRef = QUOTE ? QUOTE.ref : '';
     if (SIG_MODE !== 'off' && sigHas) d.signature = exportSig();
     if (SIG_MODE === 'required' && !d.signature) errs.push('signature');
     return { data: d, errs: errs };
@@ -631,9 +785,19 @@ var SETTINGS = {
       ['お名前', d.name + ' 様'], ['性別', d.gender ? d.gender + '性' : '（未回答）'],
       ['生年月日', d.birthday || '（未回答）'], ['電話番号', d.phone.replace(/^(0[789]0)(\d{4})(\d{4})$/, '$1-$2-$3')],
       ['郵便番号', d.zip.slice(0, 3) + '-' + d.zip.slice(3)], ['住所', d.address],
-      ['メールアドレス', d.email || '（未回答）'], ['お支払方法', d.payment], ['保証書兼領収書', d.receipt],
-      ['ご承諾事項', 'すべて確認済み']
+      ['メールアドレス', d.email || '（未回答）'], ['お支払方法', d.payment], ['保証書兼領収書', d.receipt]
     ];
+    var sum = optionSum(d.options);
+    if (QUOTE) {
+      rows.push(['車種', QUOTE.model || '－']);
+      rows.push(['修理費用', yen(QUOTE.amount) + '（税込）']);
+    }
+    if (OPTIONS.length || d.options.length) {
+      rows.push(['オプション', d.options.length ? d.options.map(function (o) { return o.name + ' ' + yen(o.price); }).join('、') : 'なし']);
+    }
+    if (QUOTE) rows.push(['お支払い合計', yen(QUOTE.amount + sum) + '（税込）']);
+    else if (d.options.length) rows.push(['お支払い金額', 'オプション ' + yen(sum) + '（税込）＋修理費用（スタッフからご案内）']);
+    rows.push(['ご承諾事項', 'すべて確認済み']);
     var dl = $('confirmList'); dl.innerHTML = '';
     rows.forEach(function (r) { dl.appendChild(confirmRow(r[0], r[1])); });
     if (SIG_MODE !== 'off') {
@@ -647,7 +811,7 @@ var SETTINGS = {
     dt.textContent = k; dd.textContent = v; div.appendChild(dt); div.appendChild(dd); return div;
   }
 
-  $('backBtn').addEventListener('click', function () { show('viewForm'); });
+  $('backBtn').addEventListener('click', function () { show('viewForm'); loadOptions(); });
 
   $('sendBtn').addEventListener('click', function () {
     if (!current) return;
@@ -738,12 +902,17 @@ var SETTINGS = {
     $('summaryErr').classList.remove('show');
     $('zipStatus').textContent = '入力すると住所が自動で入ります';
     lastAuto = ''; current = null; clearSig(); bHint();
+    clearTimeout(quoteTimer); quoteSeq++; quotePhone = ''; QUOTE = null; renderQuote('none');
+    $('sigNote').hidden = true;
+    document.querySelectorAll('#optList .opt').forEach(function (l) { l.classList.remove('checked'); });
+    updateTotal();
   }
   function resetAll() {
     if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
     $('ovIdle').classList.remove('show');
     $('qrImg').innerHTML = '';
     resetForm(); show('viewForm');
+    loadOptions(); // オプションの追加・金額変更を反映
   }
 
   // ---------- LINE連携ページ（iPad受付後のQRから開く） ----------
