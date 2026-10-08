@@ -759,6 +759,8 @@ var SETTINGS = {
 
   // ---------- 確認 → 送信 ----------
   var current = null;
+  var submitId = ''; // 同じ受付を送り直しても二重登録しないための番号（次のお客様でリセット）
+  function newSubmitId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
   var LABELS = { name: 'お名前', birthday: '生年月日', phone: '電話番号', zip: '郵便番号', address: '住所',
     email: 'メールアドレス', payment: 'お支払方法', receipt: '保証書兼領収書', signature: 'ご署名' };
 
@@ -775,7 +777,9 @@ var SETTINGS = {
       return;
     }
     $('summaryErr').classList.remove('show');
+    if (!submitId) submitId = newSubmitId();
     current = r.data;
+    current.submitId = submitId;
     renderConfirm(current);
     show('viewConfirm');
   });
@@ -905,7 +909,7 @@ var SETTINGS = {
     document.querySelectorAll('.has-err').forEach(function (el) { el.classList.remove('has-err'); });
     $('summaryErr').classList.remove('show');
     $('zipStatus').textContent = '入力すると住所が自動で入ります';
-    lastAuto = ''; current = null; clearSig(); bHint();
+    lastAuto = ''; current = null; submitId = ''; clearSig(); bHint();
     clearTimeout(quoteTimer); quoteSeq++; quotePhone = ''; QUOTE = null; renderQuote('none');
     $('sigNote').hidden = true;
     document.querySelectorAll('#optList .opt').forEach(function (l) { l.classList.remove('checked'); });
