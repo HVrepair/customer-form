@@ -106,6 +106,7 @@
   .consent .errmsg { padding: 0 14px 10px; }
   .summary-err { display: none; background: var(--err-tint); color: var(--err); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; font-weight: 700; }
   .summary-err.show { display: block; }
+  .summary-err.info { background: var(--accent-tint); color: var(--accent); }
   dl.confirm { margin: 0; }
   dl.confirm div { display: grid; grid-template-columns: minmax(6em, 9em) minmax(0, 1fr); gap: 10px; padding: 10px 0; border-bottom: 1px solid #edf1f2; }
   dl.confirm dt { color: var(--sub); font-size: .9em; }
@@ -505,8 +506,10 @@ var SETTINGS = {
     $('storeName').textContent = S.STORES[STORE];
     if (p.get('link') && !KIOSK) return startLink(p.get('link'));
     if (useLiff) $('lineNote').hidden = false;
+    var restored = restoreDraft();
     loadOptions();
     show('viewForm');
+    if (restored) checkQuote();
     poke();
   }
 
@@ -686,8 +689,10 @@ var SETTINGS = {
     document.querySelectorAll('#optList input:checked').forEach(function (cb) { var o = OPTIONS[cb.dataset.i]; if (o) out.push(o); });
     return out;
   }
+  var pendingOptNames = null; // 一時保存から戻すオプション（一覧の読み込み後に反映）
   function renderOptions() {
     var keep = selectedOptions().map(function (o) { return o.name; });
+    if (pendingOptNames) { keep = keep.concat(pendingOptNames); pendingOptNames = null; }
     var box = $('optList'); box.innerHTML = '';
     OPTIONS.forEach(function (o, i) {
       var l = el('label', 'opt');
@@ -789,6 +794,7 @@ var SETTINGS = {
     if (r.errs.length) {
       r.errs.forEach(function (f) { var el = fieldEl(f); if (el) el.classList.add('has-err'); });
       var names = r.errs.map(function (f) { return LABELS[f] || 'ご承諾事項'; }).filter(function (v, i, a) { return a.indexOf(v) === i; });
+      $('summaryErr').classList.remove('info');
       $('summaryErr').textContent = '未入力・確認が必要な項目があります：' + names.join('、');
       $('summaryErr').classList.add('show');
       var first = fieldEl(r.errs[0]);
@@ -922,13 +928,14 @@ var SETTINGS = {
   $('nextBtn').addEventListener('click', resetAll);
 
   function resetForm() {
+    clearDraft();
     document.querySelectorAll('#viewForm input[type=text], #viewForm input[type=tel], #viewForm input[type=email]').forEach(function (el) { el.value = ''; });
     document.querySelectorAll('#viewForm input[type=radio]').forEach(function (el) { el.checked = false; });
     document.querySelectorAll('#viewForm select').forEach(function (el) { el.value = ''; });
     document.querySelectorAll('#viewForm input[type=checkbox]').forEach(function (el) { el.checked = false; });
     document.querySelectorAll('.consent').forEach(function (el) { el.classList.remove('ok'); });
     document.querySelectorAll('.has-err').forEach(function (el) { el.classList.remove('has-err'); });
-    $('summaryErr').classList.remove('show');
+    $('summaryErr').classList.remove('show', 'info');
     $('zipStatus').textContent = '入力すると住所が自動で入ります';
     lastAuto = ''; current = null; submitId = ''; clearSig(); bHint();
     clearTimeout(quoteTimer); quoteSeq++; quotePhone = ''; QUOTE = null; renderQuote('none');
@@ -988,6 +995,48 @@ var SETTINGS = {
   }
   $('idleKeep').addEventListener('click', function () { clearInterval(idleCount); $('ovIdle').classList.remove('show'); poke(); });
   ['touchstart', 'keydown', 'input', 'scroll'].forEach(function (t) { document.addEventListener(t, poke, { passive: true }); });
+
+  // ---------- 入力途中の一時保存（別の画面に移ってページが読み込み直されても消えないように） ----------
+  // 店頭iPadは共用なので、送信・次のお客様へ・放置リセット・15分経過で必ず消す。署名は保存しない
+  var DRAFT_KEY = 'hv_form_draft_v1', DRAFT_TTL = 15 * 60 * 1000, draftTimer = null;
+  var TEXT_IDS = ['name', 'bY', 'phone', 'zip', 'address', 'email'], SELECT_IDS = ['bM', 'bD'], RADIO_NAMES = ['gender', 'payment', 'receipt'];
+  function clearDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch (e) {} }
+  function saveDraft() {
+    if ($('viewForm').hidden) return;
+    var d = { t: Date.now(), store: STORE, v: {}, r: {}, c: {}, o: selectedOptions().map(function (o) { return o.name; }) };
+    TEXT_IDS.concat(SELECT_IDS).forEach(function (id) { d.v[id] = $(id).value; });
+    RADIO_NAMES.forEach(function (n) { d.r[n] = radio(n); });
+    S.CONSENTS.forEach(function (c) { d.c[c.key] = $(c.key).checked; });
+    var any = TEXT_IDS.some(function (id) { return d.v[id]; }) || d.o.length ||
+      RADIO_NAMES.some(function (n) { return d.r[n]; }) || S.CONSENTS.some(function (c) { return d.c[c.key]; });
+    try { if (any) localStorage.setItem(DRAFT_KEY, JSON.stringify(d)); else localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+  }
+  function saveDraftSoon() { clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 400); }
+  function restoreDraft() {
+    var d = null;
+    try { d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch (e) {}
+    if (!d) return false;
+    if (Date.now() - d.t > DRAFT_TTL || d.store !== STORE) { clearDraft(); return false; }
+    TEXT_IDS.concat(SELECT_IDS).forEach(function (id) { if (d.v && d.v[id] != null) $(id).value = d.v[id]; });
+    RADIO_NAMES.forEach(function (n) {
+      var v = d.r && d.r[n]; if (!v) return;
+      document.querySelectorAll('input[name=' + n + ']').forEach(function (el) { el.checked = el.value === v; });
+    });
+    S.CONSENTS.forEach(function (c) {
+      var on = !!(d.c && d.c[c.key]); $(c.key).checked = on;
+      var box = document.querySelector('.consent[data-f="' + c.key + '"]'); if (box) box.classList.toggle('ok', on);
+    });
+    pendingOptNames = d.o || [];
+    bHint();
+    var note = $('summaryErr');
+    note.textContent = '入力途中の内容を復元しました。お手数ですが、ご署名だけもう一度お願いします。';
+    note.classList.add('show', 'info');
+    return true;
+  }
+  ['input', 'change'].forEach(function (t) { $('viewForm').addEventListener(t, saveDraftSoon); });
+  // 別のアプリに切り替える瞬間にも保存
+  window.addEventListener('pagehide', saveDraft);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') saveDraft(); });
 
   bHint();
   boot();
