@@ -307,6 +307,10 @@
       <div class="qrtitle">LINEで保証期間のご案内を受け取る</div>
       <div class="qr" id="qrImg"></div>
       <p class="hint">お手持ちのスマホのカメラで読み取るとLINEが開きます。<br>表示されたメッセージを<b>そのまま［送信］</b>してください。<br>保証期間満了の際に、LINEでご案内をお送りします。</p>
+      <div id="kioskSelfBox" hidden style="margin:6px 0 10px">
+        <p class="hint" style="margin:0 0 8px">この画面がお客様ご自身のスマホの場合は、こちら</p>
+        <a class="btn line-btn" id="kioskSelfBtn" href="#" style="margin-top:0">このスマホでLINEを開く</a>
+      </div>
     </div>
 
     <!-- スマホ：LINE連携の結果 -->
@@ -386,7 +390,7 @@ var SETTINGS = {
   SIGNATURE: 'required',
   // 店頭iPad：送信完了後、次のお客様用に戻るまでの秒数（QRを読み取る時間を含む）
   KIOSK_RESET_SEC: 300,
-  STORES: { kanda: '苅田行橋店', fukuoka: '福岡インター店' },
+  STORES: { kanda: '苅田行橋店', fukuoka: '福岡インター店', shutcho: '出張修理' },
   // 承諾文言（変更時はCode.gsのCONSENTSも同じ内容に変更してください）
   CONSENTS: [
     { key: 'agree1', label: '承諾します', title: '【１】電子機器の設定・カーナビのパスコードに関して', body: 'バッテリーの取外しを行うため、作業中の給電は出来かねます。そのため、ライト類・カーナビ・その他電子機器をお取付の場合、初期化・不具合・破損の可能性があります。カーナビでパスコードをご設定されている場合、交換修理後に、パスコードの入力が求められることがあります。当店での再設定や修理は出来かねますので、あらかじめご了承ください。お忘れの場合はディーラー等にて再設定いただけますようお願いいたします。' },
@@ -878,6 +882,10 @@ var SETTINGS = {
       $('doneMsg').textContent = '入力が終わりましたら、iPadをスタッフにお渡しください。';
       var kUrl = lineLinkUrl(res);
       if (kUrl) { drawQr($('qrImg'), kUrl); $('kioskQr').hidden = false; }
+      // スマホの画面幅なら、自分の画面のQRは読めないので「このスマホでLINEを開く」も出す
+      var small = Math.min(window.screen.width || 9999, window.innerWidth || 9999) < 600;
+      $('kioskSelfBox').hidden = !(kUrl && small);
+      if (kUrl) $('kioskSelfBtn').href = kUrl;
       $('nextBtn').hidden = false; $('closeBtn').hidden = true;
       var left = S.KIOSK_RESET_SEC || 300;
       var tick = function () {
