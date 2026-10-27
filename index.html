@@ -309,8 +309,23 @@
         <div><dt>ご住所</dt><dd id="rAddr"></dd></div>
         <div id="rLastRow"><dt>前回のご利用</dt><dd id="rLast"></dd></div>
       </dl>
-      <p style="margin:14px 0 8px">お名前・ご住所に変わりがなければ、お支払方法を選んで受付してください。</p>
-      <div class="field" data-f="rPayment">
+      <p style="margin:14px 0 8px">お名前・ご住所に変わりはありませんか？</p>
+      <button type="button" class="btn primary" id="rSame" style="display:block;width:100%">変わりない（次へ）</button>
+      <button type="button" class="btn ghost" id="rChanged" style="display:block;width:100%;margin-top:10px">住所などが変わった（通常の入力へ）</button>
+    </div>
+  </section>
+
+  <!-- 2. 今回のご依頼・オプション・お支払方法 -->
+  <section class="card" id="rStep2" hidden>
+    <h2>今回のご依頼</h2>
+    <div class="quote" id="rQuote" aria-live="polite"></div>
+    <div id="rOptWrap" hidden>
+      <p class="hint" style="margin:0 0 8px">ご希望のオプションがあればお選びください（任意）。</p>
+      <div id="rOptList"></div>
+    </div>
+    <div class="total" id="rTotal"></div>
+    <div>
+      <div class="field" data-f="rPayment" style="margin-top:14px">
         <div class="lbl">お支払方法</div>
         <div class="tiles">
           <label class="tile"><input type="radio" name="rPayment" value="現金"><span>現金</span></label>
@@ -319,7 +334,7 @@
         <div class="errmsg">お支払方法を選んでください</div>
       </div>
       <button type="button" class="btn primary" id="rSubmit" style="display:block;width:100%;margin-top:6px">この内容で受付する</button>
-      <button type="button" class="btn ghost" id="rChanged" style="display:block;width:100%;margin-top:10px">住所などが変わった（通常の入力へ）</button>
+      <p class="hint" id="rMsg2" style="margin-top:10px" hidden></p>
     </div>
   </section>
   <button type="button" class="btn ghost" id="rBack" style="display:block;width:100%">戻る（通常の入力へ）</button>
@@ -999,10 +1014,11 @@ var SETTINGS = {
   }
 
   // ---------- リピーター（前回の情報で受付） ----------
-  var repeatRef = '', repeatSubmitId = '';
+  var repeatRef = '', repeatSubmitId = '', RQ = null, rPhoneNum = '', rSeq = 0;
   function resetRepeat() {
-    repeatRef = ''; repeatSubmitId = '';
-    $('rPhone').value = ''; $('rMsg').hidden = true; $('rFound').hidden = true;
+    repeatRef = ''; repeatSubmitId = ''; RQ = null; rPhoneNum = ''; rSeq++;
+    $('rPhone').value = ''; $('rMsg').hidden = true; $('rFound').hidden = true; $('rStep2').hidden = true; $('rMsg2').hidden = true;
+    $('rOptList').innerHTML = ''; $('rTotal').innerHTML = ''; $('rQuote').innerHTML = '';
     document.querySelectorAll('input[name=rPayment]').forEach(function (el) { el.checked = false; });
     document.querySelector('[data-f="rPayment"]').classList.remove('has-err');
     $('rFind').disabled = false; $('rSubmit').disabled = false;
@@ -1016,7 +1032,57 @@ var SETTINGS = {
   $('repeatOpen').addEventListener('click', function () { resetRepeat(); show('viewRepeat'); setTimeout(function () { $('rPhone').focus(); }, 50); });
   $('rBack').addEventListener('click', toNormalForm);
   $('rChanged').addEventListener('click', toNormalForm);
-  $('rPhone').addEventListener('input', function () { $('rFound').hidden = true; repeatRef = ''; repeatMsg(''); });
+  $('rPhone').addEventListener('input', function () { $('rFound').hidden = true; $('rStep2').hidden = true; repeatRef = ''; RQ = null; repeatMsg(''); });
+  function rSelected() {
+    var out = [];
+    document.querySelectorAll('#rOptList input:checked').forEach(function (cb) { var o = OPTIONS[cb.dataset.i]; if (o) out.push(o); });
+    return out;
+  }
+  function rUpdateTotal() {
+    var sel = rSelected(), sum = optionSum(sel), t = $('rTotal'); t.innerHTML = '';
+    var row = function (k, v, cls) { var r = el('div', 'tr' + (cls ? ' ' + cls : '')); r.appendChild(el('span', '', k)); r.appendChild(el('span', '', v)); t.appendChild(r); };
+    if (RQ) row('修理費用' + (RQ.model ? '（' + RQ.model + '）' : ''), yen(RQ.amount));
+    sel.forEach(function (o) { row(o.name, yen(o.price)); });
+    if (RQ) row('お支払い合計（税込）', yen(RQ.amount + sum), 'grand');
+    else if (sel.length) row('オプション合計（税込）', yen(sum), 'grand');
+    t.hidden = !t.childNodes.length;
+  }
+  function rRenderOptions() {
+    var box = $('rOptList'); box.innerHTML = '';
+    OPTIONS.forEach(function (o, i) {
+      var l = el('label', 'opt');
+      var cb = document.createElement('input'); cb.type = 'checkbox'; cb.dataset.i = i;
+      var name = el('span', 'on', o.name); if (o.note) name.appendChild(el('small', '', o.note));
+      l.appendChild(cb); l.appendChild(name); l.appendChild(el('span', 'op', '＋' + yen(o.price)));
+      cb.addEventListener('change', function () { l.classList.toggle('checked', cb.checked); rUpdateTotal(); });
+      box.appendChild(l);
+    });
+    $('rOptWrap').hidden = !OPTIONS.length;
+    rUpdateTotal();
+  }
+  function rRenderQuote(state) {
+    var box = $('rQuote'); box.innerHTML = ''; box.className = 'quote';
+    if (state === 'loading') {
+      var m = el('div', 'qmsg'); m.appendChild(el('span', 'spinner')); m.appendChild(document.createTextNode('今回のご依頼内容を確認しています…'));
+      box.appendChild(m); return;
+    }
+    if (!RQ) { box.appendChild(el('div', 'qmsg', '車種・修理費用は、スタッフからご案内します。')); return; }
+    box.classList.add('found');
+    var dl = el('dl');
+    var add = function (k, v, cls) { dl.appendChild(el('dt', '', k)); dl.appendChild(el('dd', cls || '', v)); };
+    add('車種', RQ.model || '－');
+    if (RQ.grade) add('グレード', RQ.grade + (RQ.warranty ? '（保証 ' + RQ.warranty + '）' : ''));
+    add('修理費用', yen(RQ.amount) + '（税込）', 'price');
+    box.appendChild(dl);
+  }
+  // 「変わりない（次へ）」：今回の受注（車種・金額＝リピーター割引後）とオプションを表示
+  $('rSame').addEventListener('click', function () {
+    $('rStep2').hidden = false; RQ = null; rRenderQuote('loading'); rRenderOptions();
+    var seq = ++rSeq;
+    Promise.all([api('quote', { phone: rPhoneNum }).catch(function () { return null; }), OPTIONS.length ? null : loadOptions()])
+      .then(function (a) { if (seq !== rSeq) return; RQ = a[0] && a[0].found ? a[0] : null; rRenderQuote('done'); rRenderOptions(); });
+    setTimeout(function () { $('rStep2').scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
+  });
   $('rFind').addEventListener('click', function () {
     var ph = $('rPhone').value.replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).replace(/\D/g, '');
     if (!/^0\d{9,10}$/.test(ph)) { repeatMsg('電話番号を正しく入力してください（ハイフンなしでOK）'); return; }
@@ -1024,7 +1090,7 @@ var SETTINGS = {
     api('repeatLookup', { phone: ph }).then(function (r) {
       $('rFind').disabled = false;
       if (!r.found) { repeatMsg('前回の情報が見つかりませんでした。お手数ですが、下の「戻る」から通常の入力をお願いします。'); return; }
-      repeatRef = r.ref; repeatSubmitId = '';
+      repeatRef = r.ref; repeatSubmitId = ''; rPhoneNum = ph; $('rStep2').hidden = true;
       $('rName').textContent = r.name + ' 様';
       $('rAddr').textContent = r.address;
       $('rLast').textContent = r.last || '';
@@ -1040,7 +1106,9 @@ var SETTINGS = {
     $('rSubmit').disabled = true;
     $('ovSending').classList.add('show');
     $('sendingText').textContent = '送信しています…';
-    submitWithRetry({ data: { ref: repeatRef, payment: pay, store: STORE, mode: MODE, submitId: repeatSubmitId } }, 4, 'repeatSubmit')
+    var data = { ref: repeatRef, payment: pay, store: STORE, mode: MODE, submitId: repeatSubmitId,
+      quoteRef: RQ ? RQ.ref : '', options: rSelected().map(function (o) { return { name: o.name, price: o.price }; }) };
+    submitWithRetry({ data: data }, 4, 'repeatSubmit')
       .then(function (res) {
         $('ovSending').classList.remove('show');
         done(res);
@@ -1048,7 +1116,7 @@ var SETTINGS = {
       })
       .catch(function (err) {
         $('ovSending').classList.remove('show'); $('rSubmit').disabled = false;
-        repeatMsg(err.message || '送信できませんでした。もう一度お試しください');
+        $('rMsg2').textContent = err.message || '送信できませんでした。もう一度お試しください'; $('rMsg2').hidden = false;
       });
   });
   function resetAll() {
