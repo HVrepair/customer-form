@@ -58,6 +58,9 @@
   .zip-row { display: flex; gap: 10px; align-items: center; }
   .zip-row input { max-width: 200px; }
   .zip-row .status { font-size: .85em; color: var(--sub); }
+  .repeat-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border: 2px solid var(--accent); }
+  .repeat-card b { font-size: 1.05em; color: var(--accent); }
+  .repeat-card .btn { width: auto; margin: 0; padding: 12px 20px; white-space: nowrap; }
   .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
   .tile { position: relative; }
   .tile input { position: absolute; opacity: 0; pointer-events: none; }
@@ -181,6 +184,12 @@
   <div class="line-note" id="lineNote" hidden><b>LINE</b><span>送信すると、このLINEアカウントと受付情報が連携され、保証期間満了の際にLINEでご案内をお送りします。</span></div>
   <div class="summary-err" id="summaryErr"></div>
 
+  <!-- リピーター：電話番号だけで受付 -->
+  <section class="card repeat-card" id="repeatCard">
+    <div><b>前回ご利用いただいた方</b><div class="hint" style="margin:2px 0 0">電話番号を入れるだけで受付できます</div></div>
+    <button type="button" class="btn primary" id="repeatOpen">こちら</button>
+  </section>
+
   <section class="card">
     <h2>お客様情報</h2>
     <div class="field" data-f="name">
@@ -280,6 +289,40 @@
       <div class="errmsg">ご署名をお願いします</div>
     </div>
   </section>
+</main>
+
+<!-- ========== リピーター ========== -->
+<main id="viewRepeat" hidden>
+  <h1>前回ご利用いただいた方</h1>
+  <p class="lead">前回ご登録の電話番号を入力してください。前回の内容で受付します。</p>
+  <section class="card">
+    <div class="field" data-f="rPhone">
+      <label for="rPhone">電話番号</label>
+      <input type="tel" id="rPhone" inputmode="numeric" autocomplete="tel" placeholder="例）09012345678">
+    </div>
+    <button type="button" class="btn primary" id="rFind" style="display:block;width:100%">前回の情報を探す</button>
+    <p class="hint" id="rMsg" style="margin-top:12px" hidden></p>
+
+    <div id="rFound" hidden style="margin-top:16px">
+      <dl class="confirm">
+        <div><dt>お名前</dt><dd id="rName"></dd></div>
+        <div><dt>ご住所</dt><dd id="rAddr"></dd></div>
+        <div id="rLastRow"><dt>前回のご利用</dt><dd id="rLast"></dd></div>
+      </dl>
+      <p style="margin:14px 0 8px">お名前・ご住所に変わりがなければ、お支払方法を選んで受付してください。</p>
+      <div class="field" data-f="rPayment">
+        <div class="lbl">お支払方法</div>
+        <div class="tiles">
+          <label class="tile"><input type="radio" name="rPayment" value="現金"><span>現金</span></label>
+          <label class="tile"><input type="radio" name="rPayment" value="クレジットカード（一括のみ）"><span>クレジットカード<br>（一括のみ）</span></label>
+        </div>
+        <div class="errmsg">お支払方法を選んでください</div>
+      </div>
+      <button type="button" class="btn primary" id="rSubmit" style="display:block;width:100%;margin-top:6px">この内容で受付する</button>
+      <button type="button" class="btn ghost" id="rChanged" style="display:block;width:100%;margin-top:10px">住所などが変わった（通常の入力へ）</button>
+    </div>
+  </section>
+  <button type="button" class="btn ghost" id="rBack" style="display:block;width:100%">戻る（通常の入力へ）</button>
 </main>
 
 <!-- ========== 確認画面 ========== -->
@@ -434,11 +477,11 @@ var SETTINGS = {
   // 通信の途中で切れた（サーバーには届いている可能性あり）かどうか
   function isNetErr(err) { return !!(err && !err.server); }
   // 受付の送信：通信が切れたら自動で送り直す（同じ送信番号なので二重登録にはならない）
-  function submitWithRetry(payload, left) {
-    return api('submit', payload).catch(function (err) {
+  function submitWithRetry(payload, left, action) {
+    return api(action || 'submit', payload).catch(function (err) {
       if (left > 1 && isNetErr(err)) {
         $('sendingText').textContent = '通信が不安定なため、もう一度送信しています…';
-        return new Promise(function (r) { setTimeout(r, 2500); }).then(function () { return submitWithRetry(payload, left - 1); });
+        return new Promise(function (r) { setTimeout(r, 2500); }).then(function () { return submitWithRetry(payload, left - 1, action); });
       }
       throw err;
     });
@@ -448,6 +491,8 @@ var SETTINGS = {
       setTimeout(function () {
         if (action === 'submit') res({ ok: true, receiptNo: (STORE === 'fukuoka' ? 'F' : 'K') + '261006-01', linkToken: '0123456789abcdef0123456789abcdef', lineLinked: false });
         else if (action === 'link') res({ ok: true, name: '山田 太郎', receiptNo: 'K261006-01' });
+        else if (action === 'repeatLookup') res(/5678$/.test(payload.phone) ? { ok: true, found: true, name: '山田 ○○', address: '福岡県行橋市…（以下省略）', last: '2024年3月', ref: 'preview' } : { ok: true, found: false });
+        else if (action === 'repeatSubmit') res({ ok: true, receiptNo: (STORE === 'fukuoka' ? 'F' : 'K') + '261006-02', linkToken: '0123456789abcdef0123456789abcdef', lineLinked: false });
         else if (action === 'options') res({ ok: true, options: [{ name: 'ヘッドライト磨き', price: 2200, note: '' }, { name: '燃費改善ガソリン添加剤', price: 3300, note: '' }] });
         else if (action === 'quote') res(/5678$/.test(payload.phone)
           ? { ok: true, found: true, model: 'プリウス ZVW30', grade: 'スタンダード', warranty: '1年/1.5万キロ', amount: 103000, ref: 'preview.ref' }
@@ -479,7 +524,7 @@ var SETTINGS = {
   }
 
   // ---------- 画面切り替え ----------
-  var VIEWS = ['viewLoading', 'viewForm', 'viewConfirm', 'viewDone', 'viewLink', 'viewFatal'];
+  var VIEWS = ['viewLoading', 'viewForm', 'viewRepeat', 'viewConfirm', 'viewDone', 'viewLink', 'viewFatal'];
   function show(view) {
     VIEWS.forEach(function (v) { $(v).hidden = v !== view; });
     $('barForm').hidden = view !== 'viewForm';
@@ -950,7 +995,62 @@ var SETTINGS = {
     $('sigNote').hidden = true;
     document.querySelectorAll('#optList .opt').forEach(function (l) { l.classList.remove('checked'); });
     updateTotal();
+    resetRepeat();
   }
+
+  // ---------- リピーター（前回の情報で受付） ----------
+  var repeatRef = '', repeatSubmitId = '';
+  function resetRepeat() {
+    repeatRef = ''; repeatSubmitId = '';
+    $('rPhone').value = ''; $('rMsg').hidden = true; $('rFound').hidden = true;
+    document.querySelectorAll('input[name=rPayment]').forEach(function (el) { el.checked = false; });
+    document.querySelector('[data-f="rPayment"]').classList.remove('has-err');
+    $('rFind').disabled = false; $('rSubmit').disabled = false;
+  }
+  function repeatMsg(text) { $('rMsg').textContent = text; $('rMsg').hidden = !text; }
+  function toNormalForm() {
+    var ph = $('rPhone').value.replace(/[^0-9０-９]/g, '');
+    show('viewForm');
+    if (ph && !$('phone').value) { $('phone').value = ph; $('phone').dispatchEvent(new Event('input', { bubbles: true })); }
+  }
+  $('repeatOpen').addEventListener('click', function () { resetRepeat(); show('viewRepeat'); setTimeout(function () { $('rPhone').focus(); }, 50); });
+  $('rBack').addEventListener('click', toNormalForm);
+  $('rChanged').addEventListener('click', toNormalForm);
+  $('rPhone').addEventListener('input', function () { $('rFound').hidden = true; repeatRef = ''; repeatMsg(''); });
+  $('rFind').addEventListener('click', function () {
+    var ph = $('rPhone').value.replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).replace(/\D/g, '');
+    if (!/^0\d{9,10}$/.test(ph)) { repeatMsg('電話番号を正しく入力してください（ハイフンなしでOK）'); return; }
+    $('rFind').disabled = true; repeatMsg('探しています…'); $('rFound').hidden = true;
+    api('repeatLookup', { phone: ph }).then(function (r) {
+      $('rFind').disabled = false;
+      if (!r.found) { repeatMsg('前回の情報が見つかりませんでした。お手数ですが、下の「戻る」から通常の入力をお願いします。'); return; }
+      repeatRef = r.ref; repeatSubmitId = '';
+      $('rName').textContent = r.name + ' 様';
+      $('rAddr').textContent = r.address;
+      $('rLast').textContent = r.last || '';
+      $('rLastRow').hidden = !r.last;
+      repeatMsg(''); $('rFound').hidden = false;
+    }).catch(function (e) { $('rFind').disabled = false; repeatMsg(e.message || '通信できませんでした。もう一度お試しください'); });
+  });
+  $('rSubmit').addEventListener('click', function () {
+    var pay = radio('rPayment');
+    document.querySelector('[data-f="rPayment"]').classList.toggle('has-err', !pay);
+    if (!pay || !repeatRef) return;
+    if (!repeatSubmitId) repeatSubmitId = newSubmitId();
+    $('rSubmit').disabled = true;
+    $('ovSending').classList.add('show');
+    $('sendingText').textContent = '送信しています…';
+    submitWithRetry({ data: { ref: repeatRef, payment: pay, store: STORE, mode: MODE, submitId: repeatSubmitId } }, 4, 'repeatSubmit')
+      .then(function (res) {
+        $('ovSending').classList.remove('show');
+        done(res);
+        api('process').catch(function () {});
+      })
+      .catch(function (err) {
+        $('ovSending').classList.remove('show'); $('rSubmit').disabled = false;
+        repeatMsg(err.message || '送信できませんでした。もう一度お試しください');
+      });
+  });
   function resetAll() {
     if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
     $('ovIdle').classList.remove('show');
