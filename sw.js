@@ -5,6 +5,12 @@ try { importScripts('config.js'); } catch (e) { /* config.js がなくても通�
 self.addEventListener('install', function () { self.skipWaiting(); });
 self.addEventListener('activate', function (e) { e.waitUntil(self.clients.claim()); });
 
+// 画面（index.html）は毎回 GitHub に新しい版がないか確かめてから開く（古い画面のままにならないように）
+self.addEventListener('fetch', function (e) {
+  if (e.request.mode !== 'navigate') return;
+  e.respondWith(fetch(e.request, { cache: 'no-cache' }).catch(function () { return fetch(e.request); }));
+});
+
 function idbGet(key) {
   return new Promise(function (resolve) {
     try {

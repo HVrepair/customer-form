@@ -238,6 +238,7 @@
   .bcell.new { border-color: #F28C28; }
   .bcell.new .g, .bcell.new .v { color: #C2410C; }
   .sheet p { white-space: pre-wrap; }
+  .verwarn { background: #FDECEA; color: #B42318; font-size: 13px; font-weight: 700; padding: 8px 12px; padding-top: calc(8px + env(safe-area-inset-top)); }
   #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(243,244,241,.7); z-index: 40; font-size: 15px; color: var(--sub); }
 </style>
 </head>
@@ -273,6 +274,8 @@
   'use strict';
   var TOKEN_KEY = 'hvrc_token';
   var APP_VERSION = '';
+  // この画面（index.html）の版。Code.gs の HV_VERSION と同じにして配る。サーバーのほうが新しければ注意を出す
+  var SCREEN_VERSION = '2026-11-09f';
   var API_URL = String(window.HV_API_URL || '').trim();
   var IN_GAS = !!(window.google && google.script && google.script.run);
   var token = '';
@@ -347,7 +350,7 @@
     $('lbtn').disabled = true; $('lerr').textContent = '';
     call('login', { loginId: id, password: pw, device: navigator.userAgent.indexOf('iPhone') >= 0 ? 'iPhone' : (navigator.userAgent.indexOf('iPad') >= 0 ? 'iPad' : (navigator.userAgent.indexOf('Android') >= 0 ? 'Android' : 'PC')) })
       .then(function (d) {
-        saveToken(d.token); me = d.me; APP_VERSION = d.version || APP_VERSION; $('lpw').value = '';
+        saveToken(d.token); me = d.me; APP_VERSION = d.version || APP_VERSION; versionCheck(); $('lpw').value = '';
         $('login').classList.add('hidden'); $('app').classList.remove('hidden');
         route();
       })
@@ -369,6 +372,16 @@
     Array.prototype.forEach.call(document.querySelectorAll('nav.tabbar button'), function (b) { b.classList.toggle('on', b.getAttribute('data-nav') === tab); });
     backTo = back || '';
     $('back').classList.toggle('hidden', !back);
+  }
+  // 画面（GitHub の index.html）がサーバーより古いときは、上に注意を出す
+  function versionCheck() {
+    var old = document.getElementById('verWarn'); if (old) old.remove();
+    if (!APP_VERSION || !SCREEN_VERSION || SCREEN_VERSION >= APP_VERSION) return;
+    var d = document.createElement('div');
+    d.id = 'verWarn';
+    d.className = 'verwarn';
+    d.innerHTML = '画面が古い版です（画面 ' + esc(SCREEN_VERSION) + '／サーバー ' + esc(APP_VERSION) + '）。アプリを閉じて開き直してください。直らなければ管理者へ（GitHub の index.html の更新）';
+    var app = $('app'); if (app) app.insertBefore(d, app.firstChild);
   }
   function okToast(msg) { var t = $('toast'); toast(msg); t.classList.add('ok'); clearTimeout(okToast._t); okToast._t = setTimeout(function () { t.classList.remove('ok'); }, 4000); }
 
@@ -853,7 +866,7 @@
       '<input class="f" type="password" id="pw2" placeholder="新しいパスワード（もう一度）" autocomplete="new-password">' +
       '<button class="btn" id="pwbtn">変更する</button><div class="err" id="pwerr"></div><div class="okmsg" id="pwok"></div></div>';
     html += '<button class="btn sub" id="logoutBtn" style="margin-top:28px">ログアウト</button>';
-    html += '<div class="note" style="text-align:center;margin-top:16px">版 ' + esc(APP_VERSION) + '</div>';
+    html += '<div class="note" style="text-align:center;margin-top:16px">版　画面 ' + esc(SCREEN_VERSION) + '／サーバー ' + esc(APP_VERSION) + '</div>';
     $('main').innerHTML = html;
   }
   document.addEventListener('click', function (e) {
@@ -1710,7 +1723,7 @@
   token = loadToken();
   if (!token) { showLogin(''); return; }
   loading(true);
-  call('me').then(function (d) { me = d; APP_VERSION = d.version || APP_VERSION; $('app').classList.remove('hidden'); route(); })
+  call('me').then(function (d) { me = d; APP_VERSION = d.version || APP_VERSION; versionCheck(); $('app').classList.remove('hidden'); route(); })
     .catch(function () { showLogin(''); }).then(function () { loading(false); });
 })();
 </script>
