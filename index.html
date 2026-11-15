@@ -165,6 +165,36 @@
   .total .tnote { font-size: .85em; color: var(--sub); margin-top: 4px; }
   .sig-lead { margin: -2px 0 10px; font-size: .92em; }
   .sig-lead b { color: var(--brand); font-size: 1.1em; }
+  /* 事前登録（店頭iPad・スタッフが設定） */
+  .pre-card { border: 2px dashed #c98a1a; background: #fffaf0; padding: 12px 18px 10px; }
+  .pre-card.on { border-style: solid; background: #fff3dc; }
+  .pre-card.has-err { border-color: var(--err); }
+  .pre-card .pre-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .pre-card .pre-row label.pchk { display: flex; align-items: center; gap: 10px; font-weight: 700; color: #8a5a00; cursor: pointer; }
+  .pre-card .pre-row input[type=checkbox] { width: 26px; height: 26px; accent-color: #c98a1a; margin: 0; }
+  .pre-card .pre-date { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .pre-card .pre-date input { max-width: 220px; }
+  .pre-card .pre-tag { font-size: .72em; background: #c98a1a; color: #fff; border-radius: 999px; padding: 1px 8px; font-weight: 700; }
+  .pre-card .pre-link { margin-left: auto; font-size: .82em; color: var(--brand); }
+  .pre-banner { display: none; background: #fff3dc; color: #8a5a00; border-radius: 10px; padding: 10px 14px; margin: 0 0 14px; font-weight: 700; }
+  .pre-on .pre-banner { display: block; }
+  /* スタッフ画面 */
+  .st-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .st-head h1 { margin: 0; }
+  .st-item { border-left: 6px solid var(--line); }
+  .st-item.today { border-left-color: #c98a1a; }
+  .st-item.sent { border-left-color: var(--accent); opacity: .9; }
+  .st-item .st-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .st-item .st-name { font-size: 1.15em; font-weight: 800; }
+  .st-item .st-date { font-weight: 700; color: var(--sub); }
+  .st-item.today .st-date { color: #8a5a00; }
+  .st-item dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3px 14px; margin: 10px 0; font-size: .92em; }
+  .st-item dt { color: var(--sub); }
+  .st-item dd { margin: 0; font-weight: 600; word-break: break-all; }
+  .st-item .st-need { background: var(--err-tint); color: var(--err); border-radius: 8px; padding: 8px 12px; font-weight: 700; font-size: .9em; margin: 0 0 10px; }
+  .st-item .st-done { background: var(--accent-tint); color: var(--accent); border-radius: 8px; padding: 8px 12px; font-weight: 700; margin: 0 0 10px; }
+  .st-item .st-done a { color: inherit; }
+  .st-empty { text-align: center; color: var(--sub); padding: 30px 0; }
   .sig-note { background: #fff4e5; color: #8a4b00; border-radius: 10px; padding: 8px 12px; margin: 0 0 10px; font-size: .88em; font-weight: 700; }
 </style>
 </head>
@@ -183,6 +213,21 @@
   <p class="lead">修理のご連絡・保証書兼領収書の作成に使用します。所要時間は約2分です。</p>
   <div class="line-note" id="lineNote" hidden><b>LINE</b><span>送信すると、このLINEアカウントと受付情報が連携され、保証期間満了の際にLINEでご案内をお送りします。</span></div>
   <div class="summary-err" id="summaryErr"></div>
+
+  <!-- 事前登録（店頭iPad：スタッフがお渡し前に設定） -->
+  <section class="card pre-card" id="preCard" data-f="preDate" hidden>
+    <div class="pre-row">
+      <label class="pchk"><input type="checkbox" id="preOn"><span>事前登録（修理は後日）</span></label>
+      <span class="pre-tag">スタッフ用</span>
+      <a class="pre-link" id="staffLink" href="#">修理当日の領収書送信 →</a>
+    </div>
+    <div class="pre-date" id="preDateRow" hidden>
+      <label for="preDate" style="margin:0;font-weight:700;white-space:nowrap">修理予定日</label>
+      <input type="date" id="preDate">
+    </div>
+    <div class="hint" id="preHint" style="margin-bottom:6px">来店・診断して後日修理のお客様はチェック → 修理予定日を入れてからお渡しください。</div>
+  </section>
+  <div class="pre-banner" id="preBanner"></div>
 
   <!-- リピーター：電話番号だけで受付 -->
   <section class="card repeat-card" id="repeatCard">
@@ -246,7 +291,7 @@
   <section class="card">
     <h2>お支払・書類</h2>
     <div class="field" data-f="payment">
-      <div class="lbl">お支払方法 <span class="badge req">必須</span></div>
+      <div class="lbl">お支払方法 <span class="badge req" id="payBadge">必須</span></div>
       <div class="tiles">
         <label class="tile"><input type="radio" name="payment" value="現金"><span>現金</span></label>
         <label class="tile"><input type="radio" name="payment" value="クレジットカード（一括のみ）"><span>クレジットカード<br>（一括のみ）</span></label>
@@ -400,6 +445,27 @@
   </div>
 </main>
 
+<!-- ========== スタッフ画面（事前登録 → 修理当日の領収書送信） ========== -->
+<main id="viewStaff" hidden>
+  <div class="st-head">
+    <h1>事前登録のお客様</h1>
+    <button type="button" class="btn ghost small" id="stReload" style="width:auto;margin:0">更新</button>
+  </div>
+  <p class="lead" style="margin-top:0">修理が終わったら［領収書をLINEで送る］を押してください。受注シートの金額・グレードから保証書兼領収書を作り、お客様のLINEに届きます。</p>
+  <section class="card" id="stPinCard" hidden>
+    <h2>暗証番号</h2>
+    <div class="field">
+      <input type="password" id="stPin" inputmode="numeric" autocomplete="off" placeholder="4〜8桁の数字">
+      <div class="hint">このiPadで一度入れると、次からは不要です</div>
+    </div>
+    <button type="button" class="btn primary" id="stPinBtn" style="margin-bottom:12px">開く</button>
+  </section>
+  <div class="summary-err" id="stErr"></div>
+  <div id="stList"></div>
+  <p class="hint" style="text-align:center;margin:20px 0" id="stFoot"></p>
+  <div style="text-align:center;margin:0 0 30px"><a href="#" id="stBackForm" class="hint">← お客様の入力画面へ</a></div>
+</main>
+
 <!-- ========== 起動エラー ========== -->
 <main id="viewFatal" hidden>
   <div class="done">
@@ -467,6 +533,7 @@ var SETTINGS = {
   var $ = function (id) { return document.getElementById(id); };
   var params = new URLSearchParams(location.search);
   var KIOSK = params.get('mode') === 'ipad';
+  var STAFF = params.get('mode') === 'staff';
   var MODE = KIOSK ? 'kiosk' : 'phone';
   var STORE = 'kanda';
   var useLiff = false;                // LINEアプリ内（LIFF）で動いているか
@@ -508,6 +575,12 @@ var SETTINGS = {
         else if (action === 'link') res({ ok: true, name: '山田 太郎', receiptNo: 'K261006-01' });
         else if (action === 'repeatLookup') res(/5678$/.test(payload.phone) ? { ok: true, found: true, name: '山田 ○○', address: '福岡県行橋市…（以下省略）', last: '2024年3月', ref: 'preview' } : { ok: true, found: false });
         else if (action === 'repeatSubmit') res({ ok: true, receiptNo: (STORE === 'fukuoka' ? 'F' : 'K') + '261006-02', linkToken: '0123456789abcdef0123456789abcdef', lineLinked: false });
+        else if (action === 'staffList') res(payload.pin !== '1234' ? { ok: false, error: '暗証番号が違います' } : { ok: true, store: S.STORES[STORE], list: [
+          { receiptNo: 'K261115-03', name: '山田 太郎', preDate: '2026-11-15', preLabel: '11/15（日）', today: true, orderNo: 'R612', model: 'プリウス ZVW30', grade: 'スタンダード', amount: 103000, options: 'ヘッドライト磨き 2,200円', line: true, released: '', need: '' },
+          { receiptNo: 'K261112-01', name: '佐藤 花子', preDate: '2026-11-15', preLabel: '11/15（日）', today: true, orderNo: 'R609', model: 'アクア NHP10', grade: '', amount: 0, options: '', line: false, released: '', need: '金額・グレードが未入力' },
+          { receiptNo: 'K261110-02', name: '鈴木 一郎', preDate: '2026-11-18', preLabel: '11/18（水）', today: false, orderNo: 'R605', model: 'フィット GP5', grade: 'プレミアム', amount: 165000, options: '', line: true, released: '', need: '' }
+        ] });
+        else if (action === 'staffRelease') res({ ok: true, url: 'https://example.com/receipt.pdf', kind: 'receipt', sent: true, line: true });
         else if (action === 'options') res({ ok: true, options: [{ name: 'ヘッドライト磨き', price: 2200, note: '' }, { name: '燃費改善ガソリン添加剤', price: 3300, note: '' }] });
         else if (action === 'quote') res(/5678$/.test(payload.phone)
           ? { ok: true, found: true, model: 'プリウス ZVW30', grade: 'スタンダード', warranty: '1年/1.5万キロ', amount: 103000, ref: 'preview.ref' }
@@ -539,7 +612,7 @@ var SETTINGS = {
   }
 
   // ---------- 画面切り替え ----------
-  var VIEWS = ['viewLoading', 'viewForm', 'viewRepeat', 'viewConfirm', 'viewDone', 'viewLink', 'viewFatal'];
+  var VIEWS = ['viewLoading', 'viewForm', 'viewRepeat', 'viewConfirm', 'viewDone', 'viewLink', 'viewStaff', 'viewFatal'];
   function show(view) {
     VIEWS.forEach(function (v) { $(v).hidden = v !== view; });
     $('barForm').hidden = view !== 'viewForm';
@@ -551,7 +624,7 @@ var SETTINGS = {
 
   // ---------- 起動 ----------
   function boot() {
-    if (KIOSK || PREVIEW || !S.LIFF_ID) return route(params);
+    if (KIOSK || STAFF || PREVIEW || !S.LIFF_ID) return route(params);
     // スマホ（QR）はLINEアプリ内で開く
     $('loadingText').textContent = 'LINEと接続しています…';
     show('viewLoading');
@@ -568,7 +641,9 @@ var SETTINGS = {
   function route(p) {
     STORE = S.STORES[p.get('store')] ? p.get('store') : 'kanda';
     $('storeName').textContent = S.STORES[STORE];
+    if (STAFF) return startStaff();
     if (p.get('link') && !KIOSK) return startLink(p.get('link'));
+    if (KIOSK) { $('preCard').hidden = false; $('staffLink').href = '?mode=staff&store=' + STORE; }
     if (useLiff) $('lineNote').hidden = false;
     var restored = restoreDraft();
     loadOptions();
@@ -835,7 +910,8 @@ var SETTINGS = {
     if (d.zip.length !== 7) errs.push('zip');
     if (!d.address) errs.push('address');
     if (d.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)) errs.push('email');
-    if (!d.payment) errs.push('payment');
+    if (preActive()) { d.preDate = $('preDate').value; if (!preDateOk(d.preDate)) errs.push('preDate'); }
+    if (!d.payment && !d.preDate) errs.push('payment');
     if (!d.receipt) errs.push('receipt');
     S.CONSENTS.forEach(function (c) { d[c.key] = $(c.key).checked; if (!d[c.key]) errs.push(c.key); });
     d.options = selectedOptions().map(function (o) { return { name: o.name, price: o.price }; });
@@ -850,7 +926,7 @@ var SETTINGS = {
   var submitId = ''; // 同じ受付を送り直しても二重登録しないための番号（次のお客様でリセット）
   function newSubmitId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
   var LABELS = { name: 'お名前', birthday: '生年月日', phone: '電話番号', zip: '郵便番号', address: '住所',
-    email: 'メールアドレス', payment: 'お支払方法', receipt: '保証書兼領収書', signature: 'ご署名' };
+    email: 'メールアドレス', payment: 'お支払方法', receipt: '保証書兼領収書', signature: 'ご署名', preDate: '修理予定日（スタッフ用）' };
 
   $('toConfirm').addEventListener('click', function () {
     document.querySelectorAll('.has-err').forEach(function (el) { el.classList.remove('has-err'); });
@@ -878,8 +954,9 @@ var SETTINGS = {
       ['お名前', d.name + ' 様'], ['性別', d.gender ? d.gender + '性' : '（未回答）'],
       ['生年月日', d.birthday || '（未回答）'], ['電話番号', d.phone.replace(/^(0[789]0)(\d{4})(\d{4})$/, '$1-$2-$3')],
       ['郵便番号', d.zip.slice(0, 3) + '-' + d.zip.slice(3)], ['住所', d.address],
-      ['メールアドレス', d.email || '（未回答）'], ['お支払方法', d.payment], ['保証書兼領収書', d.receipt]
+      ['メールアドレス', d.email || '（未回答）'], ['お支払方法', d.payment || '修理当日にお伺いします'], ['保証書兼領収書', d.receipt]
     ];
+    if (d.preDate) rows.unshift(['修理予定日', dateLabel(d.preDate) + '（事前登録）']);
     var sum = optionSum(d.options);
     if (QUOTE) {
       rows.push(['車種', QUOTE.model || '－']);
@@ -939,7 +1016,10 @@ var SETTINGS = {
 
     if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
     if (KIOSK) {
-      $('doneMsg').textContent = '入力が終わりましたら、iPadをスタッフにお渡しください。';
+      var preD = current && current.preDate;
+      $('doneMsg').textContent = preD
+        ? '事前登録が完了しました（修理予定日：' + dateLabel(preD) + '）。保証書兼領収書は、修理が終わりましたらLINEでお送りします。iPadをスタッフにお渡しください。'
+        : '入力が終わりましたら、iPadをスタッフにお渡しください。';
       var kUrl = lineLinkUrl(res);
       if (kUrl) { drawQr($('qrImg'), kUrl); $('kioskQr').hidden = false; }
       // スマホの画面幅なら、自分の画面のQRは読めないので「このスマホでLINEを開く」も出す
@@ -1011,6 +1091,7 @@ var SETTINGS = {
     document.querySelectorAll('#optList .opt').forEach(function (l) { l.classList.remove('checked'); });
     updateTotal();
     resetRepeat();
+    $('preDate').value = ''; applyPre();
   }
 
   // ---------- リピーター（前回の情報で受付） ----------
@@ -1150,6 +1231,144 @@ var SETTINGS = {
       .then(function () { $('linkCloseBtn').hidden = !useLiff; show('viewLink'); });
   }
 
+  // ---------- 事前登録（店頭iPad：来店・診断 → 後日修理） ----------
+  function ymd(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function dateLabel(v) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v || '')); if (!m) return String(v || '');
+    var d = new Date(+m[1], +m[2] - 1, +m[3]);
+    return (d.getMonth() + 1) + '月' + d.getDate() + '日（' + '日月火水木金土'.charAt(d.getDay()) + '）';
+  }
+  function preActive() { return KIOSK && $('preOn').checked; }
+  function preDateOk(v) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v || '')) return false;
+    var t = new Date(); t.setHours(0, 0, 0, 0);
+    var y = new Date(t.getTime() - 86400000), max = new Date(t.getTime() + 365 * 86400000);
+    return v >= ymd(y) && v <= ymd(max);
+  }
+  function applyPre() {
+    var on = preActive();
+    $('preCard').classList.toggle('on', on);
+    $('preDateRow').hidden = !on;
+    $('preHint').textContent = on
+      ? '修理予定日を入れて、お客様にお渡しください。保証書兼領収書は修理当日に「修理当日の領収書送信」から送ります。'
+      : '来店・診断して後日修理のお客様はチェック → 修理予定日を入れてからお渡しください。';
+    document.body.classList.toggle('pre-on', on);
+    $('preBanner').textContent = on ? '事前登録' + ($('preDate').value ? '（修理予定日：' + dateLabel($('preDate').value) + '）' : '') +
+      '：お支払方法は当日でもかまいません。保証書兼領収書は修理が終わりましたらLINEでお送りします。' : '';
+    $('payBadge').textContent = on ? '任意' : '必須';
+    $('payBadge').className = 'badge ' + (on ? 'opt' : 'req');
+    $('repeatCard').hidden = on; // リピーターの簡単受付は事前登録では使わない
+  }
+  $('preOn').addEventListener('change', function () {
+    if ($('preOn').checked && !$('preDate').value) {
+      var t = new Date(); t.setDate(t.getDate() + 1); $('preDate').value = ymd(t);
+    }
+    applyPre();
+    if ($('preOn').checked) setTimeout(function () { $('preDate').focus(); }, 50);
+  });
+  $('preDate').addEventListener('change', function () { var f = $('preCard'); f.classList.remove('has-err'); applyPre(); });
+
+  // ---------- スタッフ画面（?mode=staff） ----------
+  var PIN_KEY = 'hv_staff_pin', stPin = '';
+  function getPin() { try { return localStorage.getItem(PIN_KEY) || ''; } catch (e) { return ''; } }
+  function setPin(v) { try { if (v) localStorage.setItem(PIN_KEY, v); else localStorage.removeItem(PIN_KEY); } catch (e) {} }
+  function stError(msg) { $('stErr').textContent = msg || ''; $('stErr').classList.toggle('show', !!msg); }
+  function startStaff() {
+    $('stBackForm').href = '?mode=ipad&store=' + STORE;
+    stPin = getPin();
+    show('viewStaff');
+    $('barForm').hidden = true;
+    if (!stPin) { $('stPinCard').hidden = false; return; }
+    loadStaff();
+  }
+  $('stPinBtn').addEventListener('click', function () {
+    var v = toHalf($('stPin').value).replace(/\D/g, '');
+    if (!/^\d{4,8}$/.test(v)) { stError('4〜8桁の数字を入れてください'); return; }
+    stPin = v; loadStaff(true);
+  });
+  $('stPin').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('stPinBtn').click(); });
+  $('stReload').addEventListener('click', function () { if (stPin) loadStaff(); });
+  function loadStaff(fromPin) {
+    stError('');
+    $('stFoot').textContent = '読み込んでいます…';
+    $('stReload').disabled = true;
+    api('staffList', { pin: stPin, store: STORE }).then(function (res) {
+      $('stReload').disabled = false;
+      if (fromPin) { setPin(stPin); $('stPin').value = ''; }
+      $('stPinCard').hidden = true;
+      renderStaff(res.list || []);
+      var n = new Date();
+      $('stFoot').textContent = n.getHours() + ':' + ('0' + n.getMinutes()).slice(-2) + ' 時点（修理予定日が' + '30日前〜14日後のお客様）';
+    }).catch(function (err) {
+      $('stReload').disabled = false;
+      $('stFoot').textContent = '';
+      var msg = String(err.message || err).replace(/^(Exception|Error):\s*/, '');
+      if (/暗証番号/.test(msg)) { setPin(''); stPin = ''; $('stPinCard').hidden = false; }
+      stError(isNetErr(err) ? '通信できませんでした。Wi-Fiを確認して［更新］を押してください。' : msg);
+    });
+  }
+  function renderStaff(list) {
+    var box = $('stList'); box.innerHTML = '';
+    if (!list.length) { box.innerHTML = '<div class="card st-empty">事前登録のお客様はいません</div>'; return; }
+    list.forEach(function (it) { box.appendChild(staffCard(it)); });
+  }
+  function staffCard(it) {
+    var c = document.createElement('section');
+    c.className = 'card st-item' + (it.today ? ' today' : '') + (it.released ? ' sent' : '');
+    var top = document.createElement('div'); top.className = 'st-top';
+    var nm = document.createElement('div'); nm.className = 'st-name'; nm.textContent = it.name + ' 様';
+    var dt = document.createElement('div'); dt.className = 'st-date';
+    dt.textContent = (it.today ? '今日 ' : it.past ? '予定日を過ぎています ' : '') + it.preLabel;
+    top.appendChild(nm); top.appendChild(dt); c.appendChild(top);
+    var dl = document.createElement('dl');
+    [['修理＃', it.orderNo || '－'], ['車種', it.model || '－'], ['グレード', it.grade || '－'],
+     ['金額', it.amount ? yen(it.amount) + '（税込）' : '－'], ['オプション', it.options || 'なし'],
+     ['LINE', it.line ? '連携済み' : '未連携（領収書はDropboxに保存のみ）'], ['受付番号', it.receiptNo]
+    ].forEach(function (r) {
+      var a = document.createElement('dt'), b = document.createElement('dd'); a.textContent = r[0]; b.textContent = r[1];
+      dl.appendChild(a); dl.appendChild(b);
+    });
+    c.appendChild(dl);
+    var msg = document.createElement('div');
+    c.appendChild(msg);
+    var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn primary';
+    btn.style.marginBottom = '14px';
+    var label = it.line ? '領収書をLINEで送る（修理完了）' : '領収書を作る（修理完了）';
+    btn.textContent = label;
+    function sent(time, url, note) {
+      msg.className = 'st-done'; msg.textContent = '';
+      msg.appendChild(document.createTextNode('✓ ' + (note || '送信済み') + (time ? '（' + time + '）' : '') + ' '));
+      if (url) { var a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'PDFを開く'; msg.appendChild(a); }
+      btn.hidden = true; c.classList.add('sent');
+    }
+    if (it.released) sent(it.released, '', it.line ? 'LINEで送信済み' : '作成済み');
+    else if (it.need) { msg.className = 'st-need'; msg.textContent = it.need + '（受注シートに入力してから［更新］）'; btn.disabled = true; }
+    var armed = null;
+    btn.addEventListener('click', function () {
+      if (!armed) { // 押し間違い防止：2回押しで送信
+        btn.textContent = 'もう一度押すと送信します';
+        armed = setTimeout(function () { armed = null; btn.textContent = label; }, 4000);
+        return;
+      }
+      clearTimeout(armed); armed = null;
+      btn.disabled = true; btn.textContent = '作成しています…';
+      api('staffRelease', { pin: stPin, receiptNo: it.receiptNo }).then(function (res) {
+        var n = new Date(), tm = n.getHours() + ':' + ('0' + n.getMinutes()).slice(-2);
+        if (res.already) sent('', res.url, '送信済みでした');
+        else if (res.line && res.sent) sent(tm, res.url, (res.kind === 'invoice' ? '請求書' : '保証書兼領収書') + 'をLINEで送りました');
+        else if (res.line) { sent(tm, res.url, '作成しました（LINE送信エラー：' + (res.lineErr || '') + '）'); msg.className = 'st-need'; }
+        else sent(tm, res.url, '作成しました（LINE未連携のため送っていません）');
+      }).catch(function (err) {
+        btn.disabled = false; btn.textContent = label;
+        msg.className = 'st-need';
+        msg.textContent = isNetErr(err) ? '通信できませんでした。［更新］で送信済みか確認してから、もう一度押してください。'
+          : String(err.message || err).replace(/^(Exception|Error):\s*/, '');
+      });
+    });
+    c.appendChild(btn);
+    return c;
+  }
+
   // ---------- 店頭iPad：放置されたら入力を消去 ----------
   var idleTimer = null, idleCount = null;
   function hasInput() {
@@ -1179,7 +1398,7 @@ var SETTINGS = {
   function clearDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch (e) {} }
   function saveDraft() {
     if ($('viewForm').hidden) return;
-    var d = { t: Date.now(), store: STORE, v: {}, r: {}, c: {}, o: selectedOptions().map(function (o) { return o.name; }) };
+    var d = { t: Date.now(), store: STORE, v: {}, r: {}, c: {}, o: selectedOptions().map(function (o) { return o.name; }), pre: preActive() ? $('preDate').value || '-' : '' };
     TEXT_IDS.concat(SELECT_IDS).forEach(function (id) { d.v[id] = $(id).value; });
     RADIO_NAMES.forEach(function (n) { d.r[n] = radio(n); });
     S.CONSENTS.forEach(function (c) { d.c[c.key] = $(c.key).checked; });
@@ -1203,6 +1422,8 @@ var SETTINGS = {
       var box = document.querySelector('.consent[data-f="' + c.key + '"]'); if (box) box.classList.toggle('ok', on);
     });
     pendingOptNames = d.o || [];
+    if (d.pre && KIOSK) { $('preOn').checked = true; $('preDate').value = d.pre === '-' ? '' : d.pre; }
+    applyPre();
     bHint();
     var note = $('summaryErr');
     note.textContent = '入力途中の内容を復元しました。お手数ですが、ご署名だけもう一度お願いします。';
